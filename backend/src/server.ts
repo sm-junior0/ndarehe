@@ -30,21 +30,63 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CORS configuration
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      'https://ndarehe.com', 
+      'https://www.ndarehe.com',
+      'https://ndarehe.vercel.app',
+      'https://ndarehe.vercel.app/',
+      'https://ndarehe-frontend.vercel.app',
+      'https://ndarehe-frontend.vercel.app/',
+      'https://ndarehe.onrender.com',
+      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+    ]
+  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'];
+
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Allowed origins:', allowedOrigins);
+
 // Security middleware
 app.use(helmet());
+
+// CORS middleware with explicit options handling
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://ndarehe.com', 
-        'https://www.ndarehe.com',
-        'https://ndarehe.vercel.app',
-        'https://ndarehe-frontend.vercel.app',
-        'https://ndarehe.onrender.com',
-        ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
-      ]
-    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log('Request with no origin - allowing');
+      return callback(null, true);
+    }
+    
+    console.log('Request from origin:', origin);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      console.log('Origin allowed:', origin);
+      callback(null, true);
+    } else {
+      // Additional check for Vercel domains with different subdomains
+      const isVercelDomain = origin.includes('ndarehe.vercel.app') || 
+                             origin.includes('ndarehe.com') ||
+                             origin.includes('ndarehe.onrender.com');
+      
+      if (isVercelDomain) {
+        console.log('Vercel domain allowed:', origin);
+        callback(null, true);
+      } else {
+        console.log('CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
