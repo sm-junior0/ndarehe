@@ -1,0 +1,424 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String?  @unique
+  firstName     String
+  lastName      String
+  password      String
+  role          UserRole @default(USER)
+  isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  profileImage  String?
+  dateOfBirth   DateTime?
+  nationality   String?
+  language      String   @default("en")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  bookings      Booking[]
+  reviews       Review[]
+  tripPlans     TripPlan[]
+  payments      Payment[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  PROVIDER
+}
+
+// Location Management
+model Location {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        LocationType
+  address     String
+  city        String
+  district    String
+  province    String
+  country     String   @default("Rwanda")
+  latitude    Float?
+  longitude   Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  accommodations Accommodation[]
+  tours          Tour[]
+  pickups        Transportation[]
+
+  @@map("locations")
+}
+
+enum LocationType {
+  CITY
+  DISTRICT
+  PROVINCE
+  LANDMARK
+  AIRPORT
+}
+
+// Accommodation Management
+model Accommodation {
+  id              String            @id @default(cuid())
+  name            String            @unique
+  description     String
+  type            AccommodationType
+  category        AccommodationCategory
+  locationId      String
+  address         String
+  phone           String?
+  email           String?
+  website         String?
+  pricePerNight   Float
+  currency        String            @default("RWF")
+  maxGuests       Int
+  bedrooms        Int
+  bathrooms       Int
+  amenities       String[]          // JSON array of amenities
+  images          String[]          // Array of image URLs
+  isAvailable     Boolean           @default(true)
+  isVerified      Boolean           @default(false)
+  rating          Float             @default(0)
+  totalReviews    Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  location        Location          @relation(fields: [locationId], references: [id])
+  bookings        Booking[]
+  reviews         Review[]
+  availability    Availability[]
+
+  @@map("accommodations")
+}
+
+enum AccommodationType {
+  HOTEL
+  GUESTHOUSE
+  APARTMENT
+  VILLA
+  HOSTEL
+  CAMPING
+  HOMESTAY
+}
+
+enum AccommodationCategory {
+  BUDGET
+  STANDARD
+  PREMIUM
+  LUXURY
+}
+
+// Transportation Management
+model Transportation {
+  id              String                @id @default(cuid())
+  name            String                @unique
+  description     String
+  type            TransportationType
+  vehicleType     VehicleType
+  locationId      String
+  capacity        Int
+  pricePerTrip    Float
+  pricePerHour    Float?
+  currency        String                @default("RWF")
+  isAvailable     Boolean               @default(true)
+  isVerified      Boolean               @default(false)
+  images          String[]              // Array of image URLs
+  amenities       String[]              // JSON array of amenities
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  location        Location              @relation(fields: [locationId], references: [id])
+  bookings        Booking[]
+
+  @@map("transportation")
+}
+
+enum TransportationType {
+  AIRPORT_PICKUP
+  CITY_TRANSPORT
+  TOUR_TRANSPORT
+  PRIVATE_TRANSPORT
+}
+
+enum VehicleType {
+  STANDARD
+  VIP
+  VAN
+  BUS
+  MOTORCYCLE
+}
+
+// Tour & Experience Management
+model Tour {
+  id              String      @id @default(cuid())
+  name            String      @unique
+  description     String
+  type            TourType
+  category        TourCategory
+  locationId      String
+  duration        Int         // in hours
+  maxParticipants Int
+  minParticipants Int         @default(1)
+  pricePerPerson  Float
+  currency        String      @default("RWF")
+  isAvailable     Boolean     @default(true)
+  isVerified      Boolean     @default(false)
+  images          String[]    // Array of image URLs
+  itinerary       String[]    // JSON array of itinerary items
+  includes        String[]    // JSON array of included items
+  excludes        String[]    // JSON array of excluded items
+  meetingPoint    String
+  startTime       String      // Time of day
+  endTime         String      // Time of day
+  rating          Float       @default(0)
+  totalReviews    Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  location        Location    @relation(fields: [locationId], references: [id])
+  bookings        Booking[]
+  reviews         Review[]
+
+  @@map("tours")
+}
+
+enum TourType {
+  CITY_TOUR
+  CULTURAL_TOUR
+  ADVENTURE_TOUR
+  FOOD_TOUR
+  NIGHTLIFE_TOUR
+  EDUCATIONAL_TOUR
+  NATURE_TOUR
+}
+
+enum TourCategory {
+  BUDGET
+  STANDARD
+  PREMIUM
+  LUXURY
+}
+
+// Availability Management
+model Availability {
+  id              String   @id @default(cuid())
+  accommodationId String
+  date            DateTime
+  isAvailable     Boolean  @default(true)
+  price           Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  accommodation   Accommodation @relation(fields: [accommodationId], references: [id])
+
+  @@unique([accommodationId, date])
+  @@map("availability")
+}
+
+// Booking Management
+model Booking {
+  id              String        @id @default(cuid())
+  userId          String
+  serviceType     ServiceType
+  accommodationId String?
+  transportationId String?
+  tourId          String?
+  startDate       DateTime
+  endDate         DateTime?
+  numberOfPeople  Int           @default(1)
+  totalAmount     Float
+  currency        String        @default("RWF")
+  status          BookingStatus @default(PENDING)
+  specialRequests String?
+  isConfirmed     Boolean       @default(false)
+  isCancelled     Boolean       @default(false)
+  cancellationReason String?
+  confirmedAt     DateTime?     // When booking was confirmed
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  user            User          @relation(fields: [userId], references: [id])
+  accommodation   Accommodation? @relation(fields: [accommodationId], references: [id])
+  transportation  Transportation? @relation(fields: [transportationId], references: [id])
+  tour            Tour?         @relation(fields: [tourId], references: [id])
+  payment         Payment?
+  review          Review?
+
+  @@map("bookings")
+}
+
+enum ServiceType {
+  ACCOMMODATION
+  TRANSPORTATION
+  TOUR
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+// Payment Management
+model Payment {
+  id              String        @id @default(cuid())
+  bookingId       String        @unique
+  userId          String
+  amount          Float
+  currency        String        @default("RWF")
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       @unique
+  gatewayResponse Json?         // Response from payment gateway
+  processedAt     DateTime?     // When payment was processed
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  booking         Booking       @relation(fields: [bookingId], references: [id])
+  user            User          @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CARD
+  MOBILE_MONEY
+  BANK_TRANSFER
+  CASH
+  PAYPAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+// Review Management
+model Review {
+  id              String   @id @default(cuid())
+  userId          String
+  serviceType     ServiceType
+  accommodationId String?
+  tourId          String?
+  bookingId       String?  @unique
+  rating          Int      // 1-5 stars
+  comment         String?
+  isVerified      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id])
+  booking         Booking? @relation(fields: [bookingId], references: [id])
+  accommodation   Accommodation? @relation(fields: [accommodationId], references: [id])
+  tour            Tour?    @relation(fields: [tourId], references: [id])
+
+  @@map("reviews")
+}
+
+// Trip Planning
+model TripPlan {
+  id              String   @id @default(cuid())
+  userId          String
+  arrivalDate     DateTime
+  departureDate   DateTime
+  budget          Float?
+  tripType        TripType
+  numberOfPeople  Int
+  specialRequests String?
+  status          TripPlanStatus @default(PENDING)
+  recommendations Json?    // JSON array of recommendations
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  user            User     @relation(fields: [userId], references: [id])
+
+  @@map("trip_plans")
+}
+
+enum TripType {
+  BUSINESS
+  FAMILY
+  ROMANTIC
+  ADVENTURE
+  CULTURAL
+  RELAXATION
+}
+
+enum TripPlanStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  CANCELLED
+}
+
+// Notification Management
+model Notification {
+  id              String           @id @default(cuid())
+  userId          String
+  type            NotificationType
+  title           String
+  message         String
+  isRead          Boolean          @default(false)
+  data            Json?            // Additional data
+  createdAt       DateTime         @default(now())
+
+  // Relations
+  user            User             @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  TRIP_PLAN_READY
+  SYSTEM_UPDATE
+  PROMOTION
+}
+
+// System Settings
+model SystemSetting {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String
+  description     String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_settings")
+} 
