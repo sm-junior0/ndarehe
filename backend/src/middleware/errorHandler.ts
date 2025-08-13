@@ -16,8 +16,17 @@ export const errorHandler = (
 
   // Prisma errors
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    const message = 'Database operation failed';
-    error = { message, statusCode: 400 } as AppError;
+    // Improve Prisma error messaging, especially for schema mismatches (e.g., P2022)
+    let message = 'Database operation failed';
+    let statusCode = 400;
+
+    // P2022: Column does not exist (most common when Prisma schema was updated but DB wasn't migrated)
+    if ((err as any).code === 'P2022') {
+      message = 'Database schema is out of date. Please run "npm run db:push" (development) or apply migrations to add missing columns.';
+      statusCode = 500;
+    }
+
+    error = { message, statusCode } as AppError;
   }
 
   if (err instanceof Prisma.PrismaClientValidationError) {

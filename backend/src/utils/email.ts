@@ -36,16 +36,17 @@ export const sendEmail = async (
 export const emailTemplates = {
   welcome: (firstName: string, verificationToken: string) => {
     const subject = 'Welcome to NDAREHE - Verify Your Email';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Welcome to NDAREHE, ${firstName}!</h2>
         <p>Thank you for joining our platform. Please verify your email address to get started.</p>
-        <a href="${process.env.BASE_URL}/verify-email?token=${verificationToken}" 
+        <a href="${baseUrl}/verify-email?token=${verificationToken}"
            style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
           Verify Email
         </a>
         <p>If the button doesn't work, copy and paste this link into your browser:</p>
-        <p>${process.env.BASE_URL}/verify-email?token=${verificationToken}</p>
+        <p>${baseUrl}/verify-email?token=${verificationToken}</p>
       </div>
     `;
     return { subject, html };
@@ -53,12 +54,13 @@ export const emailTemplates = {
 
   emailVerified: (firstName: string) => {
     const subject = 'Email Verified - Welcome to NDAREHE';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Email Verified Successfully!</h2>
         <p>Hi ${firstName},</p>
         <p>Your email has been verified successfully. You can now access all features of NDAREHE.</p>
-        <a href="${process.env.BASE_URL}" 
+        <a href="${baseUrl}" 
            style="background-color: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
           Start Exploring
         </a>
@@ -69,12 +71,13 @@ export const emailTemplates = {
 
   passwordReset: (firstName: string, resetToken: string) => {
     const subject = 'Password Reset Request - NDAREHE';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Password Reset Request</h2>
         <p>Hi ${firstName},</p>
         <p>You requested a password reset. Click the button below to reset your password:</p>
-        <a href="${process.env.BASE_URL}/reset-password?token=${resetToken}" 
+        <a href="${baseUrl}/reset-password?token=${resetToken}" 
            style="background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
           Reset Password
         </a>
@@ -107,12 +110,13 @@ export const emailTemplates = {
 
   tripPlanReady: (firstName: string, tripPlanId: string) => {
     const subject = 'Your Trip Plan is Ready - NDAREHE';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2>Your Personalized Trip Plan is Ready!</h2>
         <p>Hi ${firstName},</p>
         <p>We've created a personalized trip plan just for you. Click below to view it:</p>
-        <a href="${process.env.BASE_URL}/trip-plans/${tripPlanId}" 
+        <a href="${baseUrl}/trip-plans/${tripPlanId}" 
            style="background-color: #17a2b8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
           View Trip Plan
         </a>

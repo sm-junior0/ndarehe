@@ -422,7 +422,12 @@ router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodation
         bedrooms: parseInt(bedrooms),
         bathrooms: parseInt(bathrooms),
         amenities: amenities || [],
-        images: images || []
+        images: images || [],
+        // Partner fields if provided
+        isPartner: req.body.isPartner ?? false,
+        partnerName: req.body.partnerName ?? null,
+        partnerContact: req.body.partnerContact ?? null,
+        partnerNotes: req.body.partnerNotes ?? null
       },
       include: {
         location: {

@@ -70,6 +70,7 @@ export interface AccommodationQuery extends PaginationQuery {
   checkIn?: string;
   checkOut?: string;
   search?: string;
+  roomTypes?: string;
 }
 
 export interface TourQuery extends PaginationQuery {

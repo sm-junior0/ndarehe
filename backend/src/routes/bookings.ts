@@ -305,22 +305,29 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
       }
     });
 
-    // Send confirmation email
-    try {
+    // Send confirmation email asynchronously (do not block response)
+    {
       const serviceName = service.name;
-      const { subject, html } = emailTemplates.bookingConfirmation(
-        req.user!.firstName,
-        {
-          id: booking.id,
-          serviceName,
-          startDate: booking.startDate,
-          totalAmount: booking.totalAmount,
-          currency: booking.currency
+      const payload = {
+        id: booking.id,
+        serviceName,
+        startDate: booking.startDate,
+        totalAmount: booking.totalAmount,
+        currency: booking.currency
+      };
+      setImmediate(() => {
+        try {
+          const { subject, html } = emailTemplates.bookingConfirmation(
+            req.user!.firstName,
+            payload
+          );
+          sendEmail(req.user!.email, subject, html).catch((emailError) => {
+            console.error('Failed to send booking confirmation email:', emailError);
+          });
+        } catch (emailError) {
+          console.error('Failed to prepare booking confirmation email:', emailError);
         }
-      );
-      await sendEmail(req.user!.email, subject, html);
-    } catch (emailError) {
-      console.error('Failed to send booking confirmation email:', emailError);
+      });
     }
 
     res.status(201).json({

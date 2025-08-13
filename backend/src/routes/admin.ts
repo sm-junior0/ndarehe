@@ -284,7 +284,10 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
       totalBookings,
       totalRevenue,
       recentBookings,
-      pendingBookings
+      pendingBookings,
+      pendingTripPlans,
+      unverifiedAccommodations,
+      unverifiedTransportation
     ] = await Promise.all([
       prisma.user.count(),
       prisma.accommodation.count(),
@@ -307,7 +310,12 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
       }),
       prisma.booking.count({
         where: { status: 'PENDING' }
-      })
+      }),
+      prisma.tripPlan.count({
+        where: { status: 'PENDING' }
+      }),
+      prisma.accommodation.count({ where: { isVerified: false } }),
+      prisma.transportation.count({ where: { isVerified: false } })
     ]);
 
     res.json({
@@ -320,7 +328,10 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
           totalTransportation,
           totalBookings,
           totalRevenue: totalRevenue._sum.amount || 0,
-          pendingBookings
+          pendingBookings,
+          pendingTripPlans,
+          unverifiedAccommodations,
+          unverifiedTransportation
         },
         recentBookings
       }
@@ -433,6 +444,56 @@ router.put('/users/:id/status', async (req: AuthRequest, res: Response, next: Ne
       success: true,
       message: 'User status updated successfully',
       data: { user: updatedUser }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @desc    Permanently delete user (Admin only)
+// @route   DELETE /api/admin/users/:id
+// @access  Private (Admin only)
+router.delete('/users/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if user has active bookings
+    const activeBookings = await prisma.booking.findFirst({
+      where: {
+        userId: id,
+        status: {
+          in: ['PENDING', 'CONFIRMED']
+        }
+      }
+    });
+
+    if (activeBookings) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot delete user with active bookings. Please deactivate instead.'
+      });
+    }
+
+    // Delete user (this will cascade to related records due to Prisma schema)
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: 'User deleted permanently'
     });
   } catch (error) {
     next(error);
@@ -662,4 +723,53 @@ router.put('/settings/:key', async (req: AuthRequest, res: Response, next: NextF
   }
 });
 
-export default router; 
+// @desc    Get pending items for admin review
+// @route   GET /api/admin/pending
+// @access  Private (Admin only)
+router.get('/pending', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const [bookings, tripPlans, accommodations, transportation] = await Promise.all([
+      prisma.booking.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { firstName: true, lastName: true, email: true } },
+          accommodation: { select: { name: true, isPartner: true, partnerName: true } },
+          transportation: { select: { name: true, type: true, isPartner: true, partnerName: true } },
+          tour: { select: { name: true, type: true } },
+          payment: { select: { status: true, amount: true } }
+        },
+        take: 25
+      }),
+      prisma.tripPlan.findMany({
+        where: { status: 'PENDING' },
+        orderBy: { createdAt: 'desc' },
+        take: 25
+      }),
+      prisma.accommodation.findMany({
+        where: { isVerified: false },
+        orderBy: { createdAt: 'desc' },
+        take: 25
+      }),
+      prisma.transportation.findMany({
+        where: { isVerified: false },
+        orderBy: { createdAt: 'desc' },
+        take: 25
+      })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        pendingBookings: bookings,
+        pendingTripPlans: tripPlans,
+        unverifiedAccommodations: accommodations,
+        unverifiedTransportation: transportation
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;

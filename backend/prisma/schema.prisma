@@ -97,6 +97,11 @@ model Accommodation {
   images          String[]          // Array of image URLs
   isAvailable     Boolean           @default(true)
   isVerified      Boolean           @default(false)
+  // Partner metadata (optional)
+  isPartner       Boolean           @default(false)
+  partnerName     String?
+  partnerContact  String?
+  partnerNotes    String?
   rating          Float             @default(0)
   totalReviews    Int               @default(0)
   createdAt       DateTime          @default(now())
@@ -142,6 +147,11 @@ model Transportation {
   currency        String                @default("RWF")
   isAvailable     Boolean               @default(true)
   isVerified      Boolean               @default(false)
+  // Partner metadata (optional)
+  isPartner       Boolean               @default(false)
+  partnerName     String?
+  partnerContact  String?
+  partnerNotes    String?
   images          String[]              // Array of image URLs
   amenities       String[]              // JSON array of amenities
   createdAt       DateTime              @default(now())

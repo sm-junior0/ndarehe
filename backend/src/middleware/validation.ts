@@ -76,7 +76,12 @@ export const accommodationSchemas = {
     bedrooms: Joi.number().integer().positive().required(),
     bathrooms: Joi.number().integer().positive().required(),
     amenities: Joi.array().items(Joi.string()).optional(),
-    images: Joi.array().items(Joi.string().uri()).optional()
+    images: Joi.array().items(Joi.string().uri()).optional(),
+    // Partner fields (optional)
+    isPartner: Joi.boolean().optional(),
+    partnerName: Joi.string().optional(),
+    partnerContact: Joi.string().optional(),
+    partnerNotes: Joi.string().optional()
   }),
 
   update: Joi.object({
@@ -96,7 +101,12 @@ export const accommodationSchemas = {
     bathrooms: Joi.number().integer().positive().optional(),
     amenities: Joi.array().items(Joi.string()).optional(),
     images: Joi.array().items(Joi.string().uri()).optional(),
-    isAvailable: Joi.boolean().optional()
+    isAvailable: Joi.boolean().optional(),
+    // Partner fields (optional)
+    isPartner: Joi.boolean().optional(),
+    partnerName: Joi.string().optional(),
+    partnerContact: Joi.string().optional(),
+    partnerNotes: Joi.string().optional()
   })
 };
 
@@ -104,7 +114,7 @@ export const transportationSchemas = {
   create: Joi.object({
     name: Joi.string().min(3).max(100).required(),
     description: Joi.string().min(10).required(),
-    type: Joi.string().valid('AIRPORT_PICKUP', 'CITY_TRANSPORT', 'INTERCITY', 'TOUR_TRANSPORT').required(),
+    type: Joi.string().valid('AIRPORT_PICKUP', 'CITY_TRANSPORT', 'TOUR_TRANSPORT', 'PRIVATE_TRANSPORT').required(),
     vehicleType: Joi.string().valid('STANDARD', 'VIP', 'VAN', 'BUS', 'MOTORCYCLE').required(),
     locationId: Joi.string().required(),
     capacity: Joi.number().integer().positive().required(),
@@ -112,7 +122,12 @@ export const transportationSchemas = {
     pricePerHour: Joi.number().positive().optional(),
     currency: Joi.string().default('RWF'),
     amenities: Joi.array().items(Joi.string()).optional(),
-    images: Joi.array().items(Joi.string().uri()).optional()
+    images: Joi.array().items(Joi.string().uri()).optional(),
+    // Partner fields (optional)
+    isPartner: Joi.boolean().optional(),
+    partnerName: Joi.string().optional(),
+    partnerContact: Joi.string().optional(),
+    partnerNotes: Joi.string().optional()
   })
 };
 
