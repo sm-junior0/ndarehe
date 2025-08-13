@@ -11,7 +11,7 @@ import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
-const AirportPickup = () => {
+const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   const [tripType, setTripType] = useState("one-way");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCar, setSelectedCar] = useState<any>(null);
@@ -142,19 +142,21 @@ const AirportPickup = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {showLayout && <Header />}
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
-              <Link to="/explore">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Explore
-              </Link>
-            </Button>
-          </div>
+          {showLayout && (
+            <div className="flex items-center gap-4 mb-6">
+              <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
+                <Link to="/explore">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Explore
+                </Link>
+              </Button>
+            </div>
+          )}
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
               Airport Pickup Service
@@ -363,7 +365,7 @@ const AirportPickup = () => {
         </Dialog>
       </div>
 
-      <Footer />
+      {showLayout && <Footer />}
     </div>
   );
 };

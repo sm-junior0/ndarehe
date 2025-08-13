@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,8 @@ interface Accommodation {
 
 const Accommodations = () => {
   const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const location = useLocation();
+  const inDashboard = location.pathname.startsWith('/dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,13 +96,11 @@ const Accommodations = () => {
 
   const accommodationTypes = ["HOTEL", "GUESTHOUSE", "APARTMENT", "VILLA", "HOSTEL", "CAMPING", "HOMESTAY"];
   const categories = ["BUDGET", "STANDARD", "PREMIUM", "LUXURY"];
-  const locations = ["Kigali", "Gisenyi", "Butare", "Ruhengeri"];
+  const locations = ["Nyarutarama", "Gacuriro", "Gishushu", "Gisozi","Kimihurura"];
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
+    const content = (
+      <div className="container mx-auto px-4 py-8">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
               Find Your Perfect Stay
@@ -109,25 +109,29 @@ const Accommodations = () => {
           </div>
           <LoadingSpinner />
         </div>
+    );
+    return inDashboard ? content : (
+      <div className="min-h-screen bg-background">
+        <Header />
+        {content}
         <Footer />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
+  const main = (
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
-              <Link to="/explore">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Explore
-              </Link>
-            </Button>
+            {!inDashboard && (
+              <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
+                <Link to="/explore">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Explore
+                </Link>
+              </Button>
+            )}
           </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
@@ -275,7 +279,7 @@ const Accommodations = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <span className="text-2xl font-bold">
-                      RWF {accommodation.pricePerNight.toLocaleString()}
+                      {accommodation.currency} {accommodation.pricePerNight.toLocaleString()}
                     </span>
                     <span className="text-sm text-muted-foreground"> / night</span>
                   </div>
@@ -304,7 +308,12 @@ const Accommodations = () => {
           </div>
         )}
       </main>
+  );
 
+  return inDashboard ? main : (
+    <div className="min-h-screen bg-background">
+      <Header />
+      {main}
       <Footer />
     </div>
   );

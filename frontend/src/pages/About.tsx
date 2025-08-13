@@ -4,6 +4,39 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, Users, Award, Globe } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useEffect, useRef, useState } from "react";
+
+const CountUp = ({ end, duration = 1500, suffix = "" }: { end: number; duration?: number; suffix?: string }) => {
+  const [value, setValue] = useState(0);
+  const [hasRun, setHasRun] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !hasRun) {
+        setHasRun(true);
+        const start = performance.now();
+        const animate = (now: number) => {
+          const progress = Math.min((now - start) / duration, 1);
+          const current = Math.floor(end * progress);
+          setValue(current);
+          if (progress < 1) requestAnimationFrame(animate);
+          else setValue(end);
+        };
+        requestAnimationFrame(animate);
+        observer.disconnect();
+      }
+    }, { threshold: 0.2 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [end, duration, hasRun]);
+
+  const formatted = value.toLocaleString();
+
+  return <div ref={ref} className="text-3xl md:text-4xl font-bold mb-2">{formatted}{suffix}</div>;
+};
 
 const About = () => {
   const values = [
@@ -31,10 +64,22 @@ const About = () => {
 
   const team = [
     {
-      name: "Assia Teta",
-      role: "Backend Developer & Co-Founder",
-      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      description: "Passionate about technology and Rwanda's tourism potential"
+      name: "John Doe",
+      role: "Team Member",
+      image: "https://images.unsplash.com/photo-1502685104226-ee32379fefbe?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      description: "Dedicated to delivering great experiences"
+    },
+    {
+      name: "John Doe",
+      role: "Team Member",
+      image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      description: "Committed to customer success"
+    },
+    {
+      name: "John Doe",
+      role: "Team Member",
+      image: "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      description: "Passionate about Rwanda tourism"
     }
   ];
 
@@ -162,19 +207,19 @@ const About = () => {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-3xl md:text-4xl font-bold mb-2">500+</div>
+              <CountUp end={500} suffix="+" />
               <div className="text-primary-foreground/80">Verified Accommodations</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold mb-2">10,000+</div>
+              <CountUp end={10000} suffix="+" />
               <div className="text-primary-foreground/80">Happy Travelers</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold mb-2">50+</div>
+              <CountUp end={50} suffix="+" />
               <div className="text-primary-foreground/80">Local Experiences</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold mb-2">24/7</div>
+              <CountUp end={24} suffix="/7" />
               <div className="text-primary-foreground/80">Customer Support</div>
             </div>
           </div>

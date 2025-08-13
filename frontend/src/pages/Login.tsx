@@ -38,10 +38,8 @@ const Login = () => {
           description: `Welcome back, ${response.data.user.firstName}!`,
         });
         
-        // Check if there's a redirect parameter, otherwise go to homepage
-        const urlParams = new URLSearchParams(window.location.search);
-        const redirectTo = urlParams.get('redirect') || "/";
-        navigate(redirectTo);
+        // Always go to dashboard after login
+        navigate('/dashboard');
       }
     } catch (err: any) {
       console.error("Login error:", err);

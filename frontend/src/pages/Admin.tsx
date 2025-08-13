@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,20 +17,70 @@ import {
   Plus,
   Download
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Admin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const { user, token } = useAuth();
 
-  // Mock data - in real app this would come from API
-  const stats = [
-    { title: "Total Bookings", value: "1,234", icon: FileText },
-    { title: "Active Listings", value: "156", icon: Hotel },
-    { title: "Users", value: "890", icon: Users },
-            { title: "Revenue", value: "RWF 45,678,000", icon: MapPin }
-  ];
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  type StatItem = { title: string; value: string | number; icon: React.ComponentType<Record<string, unknown>> };
+  const [stats, setStats] = useState<StatItem[]>([
+    { title: "Total Bookings", value: "-", icon: FileText },
+    { title: "Active Listings", value: "-", icon: Hotel },
+    { title: "Users", value: "-", icon: Users },
+    { title: "Pending Requests", value: "-", icon: FileText }
+  ]);
 
-  const recentBookings = [
+  type PendingPayload = {
+    pendingBookings: unknown[];
+    pendingTripPlans: unknown[];
+    unverifiedAccommodations: unknown[];
+    unverifiedTransportation: unknown[];
+  };
+  const [recentBookings, setRecentBookings] = useState<unknown[]>([]);
+  const [pending, setPending] = useState<PendingPayload>({ pendingBookings: [], pendingTripPlans: [], unverifiedAccommodations: [], unverifiedTransportation: [] });
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN' && token) {
+      setIsLoggedIn(true);
+      setLoading(true);
+      setError(null);
+      Promise.all([
+        fetch('/api/admin/dashboard', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
+        fetch('/api/admin/pending', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+      ])
+      .then(([dash, pend]) => {
+        if (dash?.success && dash?.data?.stats) {
+          const s = dash.data.stats;
+          const totalListings = (Number(s.totalAccommodations || 0) + Number(s.totalTransportation || 0) + Number(s.totalTours || 0));
+          const pendingRequests = (Number(s.pendingBookings || 0) + Number(s.pendingTripPlans || 0));
+          setStats([
+            { title: "Total Bookings", value: (s.totalBookings ?? '-'), icon: FileText },
+            { title: "Active Listings", value: (isNaN(totalListings) ? '-' : totalListings), icon: Hotel },
+            { title: "Users", value: (s.totalUsers ?? '-'), icon: Users },
+            { title: "Pending Requests", value: (isNaN(pendingRequests) ? '-' : pendingRequests), icon: FileText }
+          ]);
+        }
+        if (dash?.success && dash?.data?.recentBookings) {
+          setRecentBookings(dash.data.recentBookings);
+        }
+        if (pend?.success && pend?.data) {
+          setPending(pend.data);
+        }
+      })
+      .catch((e) => setError(e?.message || 'Failed to load admin data'))
+      .finally(() => setLoading(false));
+    }
+  }, [user?.role, token]);
+
+  // Mock fallback if not logged in as admin
+  const showMock = useMemo(() => !isLoggedIn, [isLoggedIn]);
+
+  // Mock data - used only when not logged in
+  const mockRecentBookings = [
     {
       id: "NDH-001",
       user: "John Doe",
@@ -191,7 +241,13 @@ const Admin = () => {
           </TabsList>
 
           <TabsContent value="bookings">
-            <Card>
+            {error && (
+              <div className="mb-4 text-sm text-red-600">{error}</div>
+            )}
+            {loading && (
+              <div className="mb-4 text-sm text-muted-foreground">Loading admin data...</div>
+            )}
+            <Card className="mb-6">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Recent Bookings</CardTitle>
                 <Button size="sm">
@@ -201,25 +257,25 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentBookings.map((booking) => (
-                    <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {(showMock ? mockRecentBookings : (recentBookings as any[])).map((booking) => (
+                    <div key={(booking as any).id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex-1">
                         <div className="flex items-center space-x-4">
                           <div>
-                            <p className="font-medium">{booking.id}</p>
-                            <p className="text-sm text-muted-foreground">{booking.user}</p>
+                            <p className="font-medium">{(booking as any).id}</p>
+                            <p className="text-sm text-muted-foreground">{(booking as any).user ?? `${(booking as any).user?.firstName ?? ''} ${(booking as any).user?.lastName ?? ''}`}</p>
                           </div>
                           <div>
-                            <p className="font-medium">{booking.service}</p>
-                            <p className="text-sm text-muted-foreground">{booking.date}</p>
+                            <p className="font-medium">{(booking as any).service ?? (booking as any).accommodation?.name ?? (booking as any).transportation?.name ?? (booking as any).tour?.name}</p>
+                            <p className="text-sm text-muted-foreground">{(booking as any).date ?? new Date((booking as any).createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
                         <div className="text-right">
-                          <p className="font-bold">{booking.amount}</p>
-                          <Badge variant={booking.status === "confirmed" ? "default" : booking.status === "pending" ? "secondary" : "outline"}>
-                            {booking.status}
+                          <p className="font-bold">{(booking as any).amount ?? ((booking as any).payment?.amount ? `RWF ${(booking as any).payment?.amount}` : '—')}</p>
+                          <Badge variant={(booking as any).status === "confirmed" || (booking as any).status === "CONFIRMED" ? "default" : (booking as any).status === "pending" || (booking as any).status === "PENDING" ? "secondary" : "outline"}>
+                            {(booking as any).status?.toString().toLowerCase?.() || 'pending'}
                           </Badge>
                         </div>
                         <div className="flex space-x-2">
@@ -233,6 +289,49 @@ const Admin = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending Requests Overview */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Pending Requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Bookings awaiting confirmation</p>
+                        <p className="text-2xl font-bold">{showMock ? 123 : (pending.pendingBookings as unknown[]).length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Trip plan requests</p>
+                        <p className="text-2xl font-bold">{showMock ? 45 : (pending.pendingTripPlans as unknown[]).length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Unverified accommodations</p>
+                        <p className="text-2xl font-bold">{showMock ? 4 : (pending.unverifiedAccommodations as unknown[]).length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Unverified transportation</p>
+                        <p className="text-2xl font-bold">{showMock ? 7 : (pending.unverifiedTransportation as unknown[]).length}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

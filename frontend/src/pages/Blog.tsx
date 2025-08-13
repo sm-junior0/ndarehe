@@ -21,7 +21,7 @@ interface BlogPost {
   tags: string[];
 }
 
-const Blog = () => {
+const Blog = ({ showLayout = true }: { showLayout?: boolean }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
@@ -233,19 +233,21 @@ Remember, regardless of when you visit, seeing mountain gorillas in their natura
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {showLayout && <Header />}
       
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
-              <Link to="/explore">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Explore
-              </Link>
-            </Button>
-          </div>
+          {showLayout && (
+            <div className="flex items-center gap-4 mb-6">
+              <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
+                <Link to="/explore">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Explore
+                </Link>
+              </Button>
+            </div>
+          )}
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
               Blog & Travel Tips
@@ -378,28 +380,30 @@ Remember, regardless of when you visit, seeing mountain gorillas in their natura
         </div>
 
         {/* Newsletter Signup */}
-        <div className="mt-16">
-          <Card className="bg-primary text-primary-foreground">
-            <CardContent className="p-8 text-center">
-              <h3 className="text-2xl font-bold mb-2">Stay Updated</h3>
-              <p className="text-primary-foreground/80 mb-6">
-                Get the latest travel tips and updates delivered to your inbox
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-                <Input
-                  placeholder="Enter your email"
-                  className="bg-white text-black"
-                />
-                <Button variant="secondary">
-                  Subscribe
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {showLayout && (
+          <div className="mt-16">
+            <Card className="bg-primary text-primary-foreground">
+              <CardContent className="p-8 text-center">
+                <h3 className="text-2xl font-bold mb-2">Stay Updated</h3>
+                <p className="text-primary-foreground/80 mb-6">
+                  Get the latest travel tips and updates delivered to your inbox
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+                  <Input
+                    placeholder="Enter your email"
+                    className="bg-white text-black"
+                  />
+                  <Button variant="secondary">
+                    Subscribe
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
-      <Footer />
+      {showLayout && <Footer />}
     </div>
   );
 };

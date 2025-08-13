@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
-import { transportationApi, bookingsApi } from "@/lib/api";
+import { transportationApi, bookingsApi, paymentsApi } from "@/lib/api";
 
 interface Transportation {
   id: string;
@@ -39,12 +39,24 @@ interface Transportation {
 
 const Transportation = () => {
   const [transportation, setTransportation] = useState<Transportation[]>([]);
+  const location = useLocation();
+  const inDashboard = location.pathname.startsWith('/dashboard');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedVehicle, setSelectedVehicle] = useState("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  // UI selection: VISA | MASTERCARD | MOMO. Maps to backend methods CARD or MOBILE_MONEY
+  const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
+  const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
+  const [card, setCard] = useState({ holder: "", number: "", expiry: "", cvc: "" });
+  const [momo, setMomo] = useState({
+    phone: "",
+    name: "",
+    reference: "",
+  });
   const [selectedService, setSelectedService] = useState<Transportation | null>(null);
   const [booking, setBooking] = useState({
     date: "",
@@ -115,7 +127,7 @@ const Transportation = () => {
       dropoffLocation: "",
       serviceType: "trip"
     });
-    setConfirmed(false);
+    setSuccess(false);
     setModalOpen(true);
   };
 
@@ -140,11 +152,34 @@ const Transportation = () => {
       });
 
       if (response.success) {
-        setConfirmed(true);
-        toast({ 
-          title: "Booking Confirmed!", 
-          description: `Your ${selectedService.name} booking is confirmed.` 
+        const isHour = booking.serviceType === 'hour';
+        const amount = isHour ? (selectedService.pricePerHour || selectedService.pricePerTrip) : selectedService.pricePerTrip;
+        
+        // Validate payment fields
+        if (paymentProvider === 'MOMO') {
+          if (!momo.phone || !momo.name) {
+            throw new Error('Please provide your MoMo number and name.');
+          }
+        } else {
+          if (!card.holder || !card.number || !card.expiry || !card.cvc) {
+            throw new Error('Please fill in all card fields.');
+          }
+        }
+        
+        setIsPaying(true);
+        const payRes = await paymentsApi.createSingle({
+          bookingId: (response as any).data.booking.id,
+          amount,
+          method: paymentProvider === 'MOMO' ? 'MOBILE_MONEY' : 'CARD',
+          currency: selectedService.currency || 'RWF',
         });
+
+        if ((payRes as any).success) {
+          setSuccess(true);
+          toast({ title: 'Payment successful', description: 'Your booking has been confirmed.' });
+        } else {
+          throw new Error('Payment failed');
+        }
       } else {
         throw new Error("Booking failed");
       }
@@ -165,10 +200,8 @@ const Transportation = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="container mx-auto px-4 py-8">
+    const content = (
+      <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -178,25 +211,29 @@ const Transportation = () => {
             </div>
           </div>
         </div>
+    );
+    return inDashboard ? content : (
+      <div className="min-h-screen bg-background">
+        <Header />
+        {content}
         <Footer />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
+  const main = (
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-6">
-            <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
-              <Link to="/explore">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Explore
-              </Link>
-            </Button>
+            {!inDashboard && (
+              <Button variant="ghost" size="sm" asChild className="hover:bg-green-50 hover:text-green-700 transition-all duration-300">
+                <Link to="/explore">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Explore
+                </Link>
+              </Button>
+            )}
           </div>
           <div className="text-center">
             <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
@@ -352,8 +389,8 @@ const Transportation = () => {
 
         {/* Booking Modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            {selectedService && !confirmed && (
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/30">
+            {selectedService && !success && (
               <form onSubmit={handleBooking} className="space-y-4">
                 <DialogHeader>
                   <div className="flex items-start gap-4">
@@ -459,37 +496,102 @@ const Transportation = () => {
                   </div>
                 </div>
                 
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Total for {selectedService.vehicleType}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {booking.serviceType === "trip" ? "Per trip" : "Per hour"}
-                      </p>
-                    </div>
-                    <p className="text-xl font-bold">
-                      {booking.serviceType === "trip" 
-                                        ? `RWF ${selectedService.pricePerTrip.toLocaleString()}`
-                : `RWF ${selectedService.pricePerHour?.toLocaleString() || 0}`
-                      }
-                    </p>
+                {/* Payment section (same form) */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Payment Method</h4>
+                  <div className="flex items-center gap-4">
+                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider==='VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
+                      <img src="/logos/visa.svg" alt="Visa" className="h-6" />
+                    </button>
+                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider==='MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
+                      <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
+                    </button>
+                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider==='MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
+                      <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
+                    </button>
                   </div>
                 </div>
+
+                {paymentProvider !== 'MOMO' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    {paymentProvider === 'VISA' && (
+                      <div>
+                        <Label htmlFor="issuingBank">Issuing Bank</Label>
+                        <select id="issuingBank" className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={selectedBank} onChange={(e) => setSelectedBank(e.target.value as any)}>
+                          <option>Bank of Kigali</option>
+                          <option>I&M Bank</option>
+                          <option>Equity Bank</option>
+                        </select>
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="cardHolder">Cardholder Name</Label>
+                      <Input id="cardHolder" placeholder="JOHN DOE" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="cardNumber">Card Number</Label>
+                      <Input id="cardNumber" inputMode="numeric" maxLength={19} placeholder="4111 1111 1111 1111" value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="expiry">Expiry (MM/YY)</Label>
+                        <Input id="expiry" placeholder="12/26" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="cvc">Security Code</Label>
+                        <Input id="cvc" placeholder="123" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} required />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentProvider === 'MOMO' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="momoName">MoMo Account Name</Label>
+                      <Input id="momoName" placeholder="JOHN DOE" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="momoPhone">MoMo Phone Number</Label>
+                      <Input id="momoPhone" placeholder="07xx xxx xxx" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="momoRef">Payment Reference (optional)</Label>
+                      <Input id="momoRef" placeholder="eg. TRIP-2025-0001" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Live total */}
+                {selectedService && (() => {
+                  const isHour = booking.serviceType === 'hour';
+                  const total = isHour ? (selectedService.pricePerHour || selectedService.pricePerTrip) : selectedService.pricePerTrip;
+                  return (
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">Total {isHour ? '(per hour)' : '(per trip)'}</p>
+                          <p className="text-sm text-muted-foreground">Rate: {selectedService.currency} {isHour ? (selectedService.pricePerHour || selectedService.pricePerTrip) : selectedService.pricePerTrip} {isHour ? 'per hour' : 'per trip'}. Includes all taxes and fees.</p>
+                        </div>
+                        <p className="text-xl font-bold">{selectedService.currency} {total.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
                 
                 <DialogFooter>
-                  <Button type="submit" className="w-full">
-                    Confirm Booking
+                  <Button type="submit" className="w-full" disabled={isPaying}>
+                    {isPaying ? 'Processing...' : 'Confirm and Pay'}
                   </Button>
                 </DialogFooter>
               </form>
             )}
-            
-            {selectedService && confirmed && (
+            {selectedService && success && (
               <div className="text-center space-y-6 py-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
                   <Check className="h-6 w-6 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-green-600">Booking Confirmed!</h2>
+                <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
                 <div className="space-y-2">
                   <p>Your <span className="font-semibold">{selectedService.name}</span> booking is confirmed.</p>
                   <p className="text-muted-foreground">Check your email for confirmation details.</p>
@@ -510,7 +612,12 @@ const Transportation = () => {
           onClose={() => setShowVerificationReminder(false)}
         />
       </main>
+  );
 
+  return inDashboard ? main : (
+    <div className="min-h-screen bg-background">
+      <Header />
+      {main}
       <Footer />
     </div>
   );

@@ -25,10 +25,10 @@ import {
   Map,
   BookOpen
 } from "lucide-react";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { userApi, bookingsApi } from "@/lib/api";
 
 interface UserProfile {
   id: string;
@@ -92,21 +92,25 @@ const UserDashboard = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data.user);
+      const res = await userApi.getProfile();
+      if (res.success && res.data.user) {
+        const u = res.data.user;
+        setProfile({
+          id: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          phone: u.phone,
+          dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().slice(0, 10) : "",
+          isEmailVerified: Boolean(u.isVerified),
+          createdAt: u.createdAt,
+        });
         setEditForm({
-          firstName: data.data.user.firstName,
-          lastName: data.data.user.lastName,
-          phone: data.data.user.phone || "",
-          dateOfBirth: data.data.user.dateOfBirth || ""
+          firstName: u.firstName,
+          lastName: u.lastName,
+          phone: u.phone || "",
+          // dateOfBirth may be ISO string; normalize to YYYY-MM-DD
+          dateOfBirth: u.dateOfBirth ? new Date(u.dateOfBirth).toISOString().slice(0, 10) : "",
         });
       }
     } catch (error) {
@@ -114,7 +118,7 @@ const UserDashboard = () => {
       toast({
         title: "Error",
         description: "Failed to load profile",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -122,23 +126,28 @@ const UserDashboard = () => {
   const fetchUserBookings = async () => {
     setBookingsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/bookings", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBookings(data.data.bookings);
+      const res = await bookingsApi.getAll();
+      if (res.success && res.data.bookings) {
+        // Map backend shape to UI shape if needed
+        const mapped = res.data.bookings.map((b: any) => ({
+          id: b.id,
+          serviceType: b.serviceType,
+          serviceName: b.accommodation?.name || b.transportation?.name || b.tour?.name || "Service",
+          status: b.status,
+          startDate: b.startDate,
+          endDate: b.endDate,
+          totalAmount: b.totalAmount,
+          participants: b.numberOfPeople,
+          createdAt: b.createdAt,
+        }));
+        setBookings(mapped);
       }
     } catch (error) {
       console.error("Error fetching bookings:", error);
       toast({
         title: "Error",
         description: "Failed to load bookings",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setBookingsLoading(false);
@@ -148,19 +157,9 @@ const UserDashboard = () => {
   const handleProfileUpdate = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/users/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(editForm),
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data.data.user);
+      const res = await userApi.updateProfile(editForm);
+      if (res.success && res.data.user) {
+        setProfile(res.data.user);
         setIsEditing(false);
         toast({
           title: "Success",
@@ -174,7 +173,7 @@ const UserDashboard = () => {
       toast({
         title: "Error",
         description: "Failed to update profile",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -222,10 +221,8 @@ const UserDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <div className="container mx-auto px-4 py-8">
+    <DashboardLayout title="Dashboard">
+      <div className="px-0 py-0">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Dashboard</h1>
           <p className="text-muted-foreground">Manage your profile, bookings, and account settings</p>
@@ -233,7 +230,7 @@ const UserDashboard = () => {
 
         {/* Quick Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Link to="/accommodations">
+          <Link to="/dashboard/accommodations">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -247,7 +244,7 @@ const UserDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/transportation">
+          <Link to="/dashboard/transportation">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -261,7 +258,7 @@ const UserDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/tours">
+          <Link to="/dashboard/tours">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -275,7 +272,7 @@ const UserDashboard = () => {
             </Card>
           </Link>
           
-          <Link to="/my-bookings">
+          <Link to="/dashboard/my-bookings">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -291,14 +288,10 @@ const UserDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
-            </TabsTrigger>
-            <TabsTrigger value="bookings" className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Bookings
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
@@ -415,55 +408,7 @@ const UserDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Bookings Tab */}
-          <TabsContent value="bookings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>My Bookings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {bookingsLoading ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">Loading bookings...</p>
-                  </div>
-                ) : bookings.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No bookings found</p>
-                    <Button className="mt-4" onClick={() => window.location.href = "/"}>
-                      Start Booking
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {bookings.map((booking) => (
-                      <Card key={booking.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            {getServiceIcon(booking.serviceType)}
-                            <div>
-                              <h4 className="font-semibold">{booking.serviceName}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(booking.startDate).toLocaleDateString()}
-                                {booking.endDate && ` - ${new Date(booking.endDate).toLocaleDateString()}`}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {booking.participants} {booking.participants === 1 ? 'person' : 'people'}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">RWF {booking.totalAmount.toLocaleString()}</p>
-                            {getStatusBadge(booking.status)}
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Bookings tab removed per request */}
 
           {/* Payments Tab */}
           <TabsContent value="payments" className="space-y-6">
@@ -527,9 +472,7 @@ const UserDashboard = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      <Footer />
-    </div>
+    </DashboardLayout>
   );
 };
 

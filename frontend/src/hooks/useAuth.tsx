@@ -42,18 +42,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    if (storedToken) {
-      setToken(storedToken);
-      // Decode token to get user info
-      const decoded = decodeToken(storedToken);
-      if (decoded && decoded.user) {
-        setUser(decoded.user);
-      } else {
-        // Fallback: set basic user info if token doesn't contain user data
-        setUser({ id: "", email: "", firstName: "", lastName: "", role: "USER" });
-      }
-    }
+    // Clear any persisted auth on app start to avoid stale sessions across restarts
+    localStorage.removeItem("token");
+    setToken(null);
+    setUser(null);
   }, []);
 
   const login = (newToken: string, userData?: User) => {

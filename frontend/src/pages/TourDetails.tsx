@@ -10,7 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { toursApi, bookingsApi } from "@/lib/api";
+import { toursApi, bookingsApi, paymentsApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
 
@@ -51,7 +51,17 @@ const TourDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  // UI selection: VISA | MASTERCARD | MOMO. Maps to backend methods CARD or MOBILE_MONEY
+  const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
+  const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
+  const [card, setCard] = useState({ holder: "", number: "", expiry: "", cvc: "" });
+  const [momo, setMomo] = useState({
+    phone: "",
+    name: "",
+    reference: "",
+  });
   const [booking, setBooking] = useState({
     date: "",
     participants: "2",
@@ -119,11 +129,34 @@ const TourDetails = () => {
       });
 
       if (response.success) {
-        setConfirmed(true);
-        toast({ 
-          title: "Booking Confirmed!", 
-          description: `Your ${tour.name} booking is confirmed.` 
+        // Compute total and pay immediately
+        const amount = tour.pricePerPerson * parseInt(booking.participants);
+        
+        // Validate payment fields
+        if (paymentProvider === 'MOMO') {
+          if (!momo.phone || !momo.name) {
+            throw new Error('Please provide your MoMo number and name.');
+          }
+        } else {
+          if (!card.holder || !card.number || !card.expiry || !card.cvc) {
+            throw new Error('Please fill in all card fields.');
+          }
+        }
+        
+        setIsPaying(true);
+        const payRes = await paymentsApi.createSingle({
+          bookingId: (response as any).data.booking.id,
+          amount,
+          method: paymentProvider === 'MOMO' ? 'MOBILE_MONEY' : 'CARD',
+          currency: tour.currency || 'RWF',
         });
+
+        if ((payRes as any).success) {
+          setSuccess(true);
+          toast({ title: 'Payment successful', description: 'Your booking has been confirmed.' });
+        } else {
+          throw new Error('Payment failed');
+        }
       } else {
         throw new Error(response.message || "Booking failed");
       }
@@ -287,8 +320,8 @@ const TourDetails = () => {
 
         {/* Booking Modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            {!confirmed && (
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/30">
+            {!success && (
               <form onSubmit={handleBooking} className="space-y-4">
                 <DialogHeader>
                   <div className="flex items-start gap-4">
@@ -351,32 +384,102 @@ const TourDetails = () => {
                   />
                 </div>
                 
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Total for {parseInt(booking.participants)} participant{parseInt(booking.participants) > 1 ? 's' : ''}</p>
-                      <p className="text-sm text-muted-foreground">Includes all taxes and fees</p>
-                    </div>
-                    <p className="text-xl font-bold">
-                      RWF {(tour.pricePerPerson * parseInt(booking.participants)).toLocaleString()}
-                    </p>
+                {/* Payment section (same form) */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Payment Method</h4>
+                  <div className="flex items-center gap-4">
+                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider==='VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
+                      <img src="/logos/visa.svg" alt="Visa" className="h-6" />
+                    </button>
+                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider==='MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
+                      <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
+                    </button>
+                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider==='MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
+                      <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
+                    </button>
                   </div>
                 </div>
+
+                {paymentProvider !== 'MOMO' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    {paymentProvider === 'VISA' && (
+                      <div>
+                        <Label htmlFor="issuingBank">Issuing Bank</Label>
+                        <select id="issuingBank" className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={selectedBank} onChange={(e) => setSelectedBank(e.target.value as any)}>
+                          <option>Bank of Kigali</option>
+                          <option>I&M Bank</option>
+                          <option>Equity Bank</option>
+                        </select>
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="cardHolder">Cardholder Name</Label>
+                      <Input id="cardHolder" placeholder="JOHN DOE" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="cardNumber">Card Number</Label>
+                      <Input id="cardNumber" inputMode="numeric" maxLength={19} placeholder="4111 1111 1111 1111" value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="expiry">Expiry (MM/YY)</Label>
+                        <Input id="expiry" placeholder="12/26" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="cvc">Security Code</Label>
+                        <Input id="cvc" placeholder="123" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} required />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentProvider === 'MOMO' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="momoName">MoMo Account Name</Label>
+                      <Input id="momoName" placeholder="JOHN DOE" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="momoPhone">MoMo Phone Number</Label>
+                      <Input id="momoPhone" placeholder="07xx xxx xxx" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="momoRef">Payment Reference (optional)</Label>
+                      <Input id="momoRef" placeholder="eg. TRIP-2025-0001" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Live total */}
+                {(() => {
+                  const participants = parseInt(booking.participants || '0') || 0;
+                  const total = participants * (tour.pricePerPerson || 0);
+                  return (
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">Total for {participants} participant{participants>1?'s':''}</p>
+                          <p className="text-sm text-muted-foreground">Rate: {tour.currency} {tour.pricePerPerson.toLocaleString()} per person. Includes all taxes and fees.</p>
+                        </div>
+                        <p className="text-xl font-bold">{tour.currency} {total.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
                 
                 <DialogFooter>
-                  <Button type="submit" className="w-full">
-                    Confirm Booking
+                  <Button type="submit" className="w-full" disabled={isPaying}>
+                    {isPaying ? 'Processing...' : 'Confirm and Pay'}
                   </Button>
                 </DialogFooter>
               </form>
             )}
-            
-            {confirmed && (
+            {success && (
               <div className="text-center space-y-6 py-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
                   <Check className="h-6 w-6 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-green-600">Booking Confirmed!</h2>
+                <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
                 <div className="space-y-2">
                   <p>Your <span className="font-semibold">{tour.name}</span> booking is confirmed.</p>
                   <p className="text-muted-foreground">Check your email for confirmation details.</p>

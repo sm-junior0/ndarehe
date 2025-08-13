@@ -25,7 +25,7 @@ interface Booking {
   image: string;
 }
 
-const MyBookings = () => {
+const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -125,7 +125,7 @@ const MyBookings = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
+        {showLayout && <Header />}
         <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
@@ -136,7 +136,7 @@ const MyBookings = () => {
             </div>
           </div>
         </div>
-        <Footer />
+        {showLayout && <Footer />}
       </div>
     );
   }
@@ -148,7 +148,7 @@ const MyBookings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {showLayout && <Header />}
       
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -215,7 +215,7 @@ const MyBookings = () => {
         )}
       </main>
 
-      <Footer />
+      {showLayout && <Footer />}
     </div>
   );
 };

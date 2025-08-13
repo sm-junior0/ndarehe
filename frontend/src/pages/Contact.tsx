@@ -40,13 +40,13 @@ const Contact = () => {
     {
       icon: Mail,
       title: "Email",
-      value: "info@ndarehe.com",
+      value: "dianekund@gmail.com",
       description: "Send us an email anytime"
     },
     {
       icon: Phone,
       title: "Phone",
-      value: "+250 788 123 456",
+      value: "+250785845701",
       description: "Call us during business hours"
     },
     {
@@ -194,6 +194,53 @@ const Contact = () => {
                 </Form>
               </CardContent>
             </Card>
+            <div className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Frequently Asked Questions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-medium mb-2">How do I make a booking?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        You can book directly through our website or contact our team for personalized assistance.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Can I cancel my booking?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Cancellation policies vary by accommodation and service. Please check your booking details.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Do you offer airport pickup?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Yes, we provide reliable airport transfer services with various vehicle options.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">What payment methods do you accept?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        We accept credit cards, mobile money (MTN & Airtel), and PayPal for your convenience.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">How quickly do you respond?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        We typically respond within 24 hours on business days, and sooner for urgent booking issues.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Do you help with custom itineraries?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Yes, our local experts can craft personalized trips based on your interests and budget.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Contact Information */}
@@ -273,42 +320,6 @@ const Contact = () => {
           </div>
         </div>
 
-        {/* FAQ Section */}
-        <div className="mt-16">
-          <Card>
-            <CardHeader>
-              <CardTitle>Frequently Asked Questions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium mb-2">How do I make a booking?</h4>
-                  <p className="text-sm text-muted-foreground">
-                    You can book directly through our website or contact our team for personalized assistance.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Can I cancel my booking?</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Cancellation policies vary by accommodation and service. Please check your booking details.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">Do you offer airport pickup?</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Yes, we provide reliable airport transfer services with various vehicle options.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2">What payment methods do you accept?</h4>
-                  <p className="text-sm text-muted-foreground">
-                    We accept credit cards, mobile money (MTN & Airtel), and PayPal for your convenience.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       <Footer />

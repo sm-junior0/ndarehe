@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Star, Users, ArrowLeft, Check } from "lucide-react";
+import { MapPin, Star, Users, ArrowLeft, Check, Phone, Globe } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { bookingsApi, accommodationsApi } from "@/lib/api";
+import { bookingsApi, accommodationsApi, paymentsApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
 
@@ -32,6 +32,33 @@ interface Accommodation {
   website: string;
   address: string;
   averageRating: number;
+  // New optional fields to support richer hotel info without breaking existing data
+  contactNumbers?: string[]; // alternative to single phone
+  roomTypes?: Array<{
+    id?: string;
+    name: string;
+    description?: string;
+    capacity?: number;
+    pricePerNight: number;
+    currency?: string;
+    amenities?: string[];
+    images?: string[];
+  }>;
+  seasonalRates?: Array<{
+    season: string;
+    startDate?: string;
+    endDate?: string;
+    pricePerNight: number;
+    currency?: string;
+  }>;
+  specialOffers?: Array<{
+    title: string;
+    description?: string;
+    price?: number;
+    currency?: string;
+    startDate?: string;
+    endDate?: string;
+  }>;
   location: {
     id: string;
     name: string;
@@ -61,6 +88,23 @@ const AccommodationDetails = () => {
   const [accommodation, setAccommodation] = useState<Accommodation | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
+  // UI selection: VISA | MASTERCARD | MOMO. Maps to backend methods CARD or MOBILE_MONEY
+  const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
+  const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
+  const [card, setCard] = useState({
+    holder: "",
+    number: "",
+    expiry: "",
+    cvc: "",
+  });
+  const [momo, setMomo] = useState({
+    phone: "",
+    name: "",
+    reference: "",
+  });
   const [booking, setBooking] = useState({
     checkIn: "",
     checkOut: "",
@@ -70,6 +114,12 @@ const AccommodationDetails = () => {
   const [showVerificationReminder, setShowVerificationReminder] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Derived booking values
+  const nights = booking.checkIn && booking.checkOut
+    ? Math.max(1, Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+    : 1;
+  const guestsCount = parseInt(booking.guests || '1', 10) || 1;
 
   useEffect(() => {
     const fetchAccommodation = async () => {
@@ -86,9 +136,10 @@ const AccommodationDetails = () => {
         } else {
           setError("Failed to load accommodation details");
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Error fetching accommodation:", error);
-        setError(error.message || "Failed to load accommodation details");
+        const errorMessage = error instanceof Error ? error.message : "Failed to load accommodation details";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -97,7 +148,7 @@ const AccommodationDetails = () => {
     fetchAccommodation();
   }, [id]);
 
-  const handleBooking = async (e: React.FormEvent) => {
+  const handleBookingAndPayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
 
@@ -125,6 +176,7 @@ const AccommodationDetails = () => {
     }
 
     try {
+      setSubmitting(true);
       const token = localStorage.getItem("token");
       if (!token) {
         toast({
@@ -135,6 +187,7 @@ const AccommodationDetails = () => {
         return;
       }
 
+      // Create booking first
       const response = await bookingsApi.create({
         serviceType: "ACCOMMODATION",
         serviceId: accommodation.id,
@@ -145,24 +198,56 @@ const AccommodationDetails = () => {
       });
 
       if (response.success) {
-        setConfirmed(true);
-        toast({
-          title: "Booking Confirmed!",
-          description: `Your stay at ${accommodation.name} is confirmed.`
+        // Compute total and pay immediately (per person per night)
+        const checkInDate = new Date(booking.checkIn);
+        const checkOutDate = new Date(booking.checkOut);
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
+        const nights = Math.max(1, rawNights);
+        const guests = parseInt(booking.guests) || 1;
+        const amount = nights * guests * accommodation.pricePerNight;
+
+        // Validate payment fields
+        if (paymentProvider === 'MOMO') {
+          if (!momo.phone || !momo.name) {
+            throw new Error('Please provide your MoMo number and name.');
+          }
+        } else {
+          if (!card.holder || !card.number || !card.expiry || !card.cvc) {
+            throw new Error('Please fill in all card fields.');
+          }
+        }
+
+        setIsPaying(true);
+        const payRes = await paymentsApi.createSingle({
+          bookingId: response.data.booking.id,
+          amount,
+          method: paymentProvider === 'MOMO' ? 'MOBILE_MONEY' : 'CARD',
+          currency: accommodation.currency || 'RWF',
         });
+
+        if (payRes.success) {
+          setSuccess(true);
+          toast({ title: 'Payment successful', description: 'Your booking has been confirmed.' });
+        } else {
+          throw new Error('Payment failed');
+        }
       } else {
         throw new Error("Booking failed");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Booking error:", error);
 
-      let errorMessage = error.message || "There was an error processing your booking. Please try again.";
+      let errorMessage = "There was an error processing your booking. Please try again.";
 
-      // If your API errors have a 'status' property, check for it generically
-      if (error && typeof error === "object" && "status" in error) {
-        if ((error as any).status === 400) {
+      // Handle different error types
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === "object" && "status" in error) {
+        const statusError = error as { status: number };
+        if (statusError.status === 400) {
           errorMessage = "Please check your booking details and try again.";
-        } else if ((error as any).status === 401) {
+        } else if (statusError.status === 401) {
           errorMessage = "Please log in to complete your booking.";
         }
       }
@@ -172,6 +257,8 @@ const AccommodationDetails = () => {
         description: errorMessage,
         variant: "destructive"
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -271,6 +358,24 @@ const AccommodationDetails = () => {
                   </div>
                 </div>
 
+                {/* Contact & Website */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    <span>
+                      {accommodation.contactNumbers?.length
+                        ? accommodation.contactNumbers.join(' • ')
+                        : accommodation.phone || '—'}
+                    </span>
+                  </div>
+                  {accommodation.website && (
+                    <a href={accommodation.website} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-green-700 hover:underline">
+                      <Globe className="h-4 w-4" />
+                      Visit website
+                    </a>
+                  )}
+                </div>
+
                 {accommodation.amenities && accommodation.amenities.length > 0 && (
                   <div>
                     <h4 className="font-semibold mb-2">Amenities</h4>
@@ -279,6 +384,51 @@ const AccommodationDetails = () => {
                         <Badge key={index} variant="outline" className="text-xs">
                           {amenity}
                         </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Room types (optional) */}
+                {accommodation.roomTypes && accommodation.roomTypes.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Room types</h4>
+                    <div className="space-y-3">
+                      {accommodation.roomTypes.map((room, idx) => (
+                        <div key={room.id || idx} className="flex items-start justify-between gap-4 border rounded-md p-3">
+                          <div>
+                            <p className="font-medium">{room.name}</p>
+                            {room.description && <p className="text-sm text-muted-foreground">{room.description}</p>}
+                            {room.capacity && (
+                              <p className="text-xs text-muted-foreground">Sleeps up to {room.capacity} guests</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{room.currency || accommodation.currency} {room.pricePerNight.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Special offers (optional) */}
+                {accommodation.specialOffers && accommodation.specialOffers.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="font-semibold mb-2">Special offers</h4>
+                    <div className="space-y-3">
+                      {accommodation.specialOffers.map((offer, idx) => (
+                        <div key={idx} className="flex items-start justify-between gap-4 border rounded-md p-3 bg-green-50">
+                          <div>
+                            <p className="font-medium">{offer.title}</p>
+                            {offer.description && <p className="text-sm text-muted-foreground">{offer.description}</p>}
+                          </div>
+                          {offer.price && (
+                            <div className="text-right">
+                              <p className="font-semibold">{offer.currency || accommodation.currency} {offer.price.toLocaleString()}</p>
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -325,8 +475,8 @@ const AccommodationDetails = () => {
               </CardHeader>
               <CardContent>
                 <div className="text-center mb-4">
-                  <div className="text-3xl font-bold">RWF {accommodation.pricePerNight.toLocaleString()}</div>
-                  <div className="text-muted-foreground">per night</div>
+                  <div className="text-3xl font-bold">{accommodation.currency} {accommodation.pricePerNight.toLocaleString()}</div>
+                  <div className="text-muted-foreground">per person per night</div>
                 </div>
 
                 <Button className="w-full" size="lg" onClick={() => setModalOpen(true)}>
@@ -339,9 +489,9 @@ const AccommodationDetails = () => {
 
         {/* Booking Modal */}
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="sm:max-w-[600px]">
-            {!confirmed && (
-              <form onSubmit={handleBooking} className="space-y-4">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/30">
+            {!success && (
+              <form onSubmit={handleBookingAndPayment} className="space-y-4">
                 <DialogHeader>
                   <div className="flex items-start gap-4">
                     {accommodation.images && accommodation.images.length > 0 && (
@@ -360,7 +510,7 @@ const AccommodationDetails = () => {
                         </div>
                         <div className="flex items-center mt-1">
                           <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                          {accommodation.averageRating} • RWF {accommodation.pricePerNight.toLocaleString()}/night
+                          {accommodation.averageRating} • {accommodation.currency} {accommodation.pricePerNight.toLocaleString()}/night per person
                         </div>
                       </DialogDescription>
                     </div>
@@ -416,30 +566,131 @@ const AccommodationDetails = () => {
                     placeholder="Any special requirements..."
                   />
                 </div>
-                <div className="bg-secondary/50 p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">Total for {accommodation.type}</p>
-                      <p className="text-sm text-muted-foreground">Includes all taxes and fees</p>
-                    </div>
-                    <p className="text-xl font-bold">RWF {accommodation.pricePerNight.toLocaleString()}</p>
+
+                {/* Payment section (in same form) */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Payment Method</h4>
+                  <div className="flex items-center gap-4">
+                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider==='VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
+                      <img src="/logos/visa.svg" alt="Visa" className="h-6" />
+                    </button>
+                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider==='MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
+                      <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
+                    </button>
+                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider==='MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
+                      <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
+                    </button>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Unit price: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night
+                  </p>
                 </div>
 
+                {paymentProvider !== 'MOMO' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    {paymentProvider === 'VISA' && (
+                      <div>
+                        <Label htmlFor="issuingBank">Issuing Bank</Label>
+                        <select id="issuingBank" className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={selectedBank} onChange={(e) => setSelectedBank(e.target.value as 'Bank of Kigali' | "I&M Bank" | 'Equity Bank')}>
+                          <option>Bank of Kigali</option>
+                          <option>I&M Bank</option>
+                          <option>Equity Bank</option>
+                        </select>
+                      </div>
+                    )}
+                    <div>
+                      <Label htmlFor="cardHolder">Cardholder Name</Label>
+                      <Input id="cardHolder" placeholder="JOHN DOE" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="cardNumber">Card Number</Label>
+                      <Input id="cardNumber" inputMode="numeric" maxLength={19} placeholder="4111 1111 1111 1111" value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="expiry">Expiry (MM/YY)</Label>
+                        <Input id="expiry" placeholder="12/26" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} required />
+                      </div>
+                      <div>
+                        <Label htmlFor="cvc">Security Code</Label>
+                        <Input id="cvc" placeholder="123" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} required />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {paymentProvider === 'MOMO' && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="momoName">MoMo Account Name</Label>
+                      <Input id="momoName" placeholder="JOHN DOE" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="momoPhone">MoMo Phone Number</Label>
+                      <Input id="momoPhone" placeholder="07xx xxx xxx" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="momoRef">Payment Reference (optional)</Label>
+                      <Input id="momoRef" placeholder="eg. TRIP-2025-0001" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
+                    </div>
+                  </div>
+                )}
+
+                {/* Live total */}
+                {(() => {
+                  const hasDates = booking.checkIn && booking.checkOut;
+                  let nights = 0;
+                  if (hasDates) {
+                    const ci = new Date(booking.checkIn).getTime();
+                    const co = new Date(booking.checkOut).getTime();
+                    nights = Math.max(1, Math.ceil((co - ci) / (1000*60*60*24)));
+                  }
+                  const guests = parseInt(booking.guests || '1') || 1;
+                  const total = (nights || 0) * guests * (accommodation.pricePerNight || 0);
+                  
+                  return (
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">
+                            {nights > 0 
+                              ? `Total for ${guests} guest${guests>1?'s':''} over ${nights} night${nights>1?'s':''}`
+                              : `Total for ${guests} guest${guests>1?'s':''}`
+                            }
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {nights > 0 
+                              ? `Rate: ${accommodation.currency} ${accommodation.pricePerNight.toLocaleString()} per person per night. Includes all taxes and fees.`
+                              : `Rate: ${accommodation.currency} ${accommodation.pricePerNight.toLocaleString()} per person per night. Select dates to see total.`
+                            }
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          {nights > 0 ? (
+                            <p className="text-xl font-bold">{accommodation.currency} {total.toLocaleString()}</p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Select dates</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <DialogFooter>
-                  <Button type="submit" className="w-full">
-                    Confirm Booking
+                  <Button type="submit" className="w-full" disabled={isPaying}>
+                    {isPaying ? 'Processing...' : 'Confirm and Pay'}
                   </Button>
                 </DialogFooter>
               </form>
             )}
 
-            {confirmed && (
+            {success && (
               <div className="text-center space-y-6 py-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
                   <Check className="h-6 w-6 text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold text-green-600">Booking Confirmed!</h2>
+                <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
                 <div className="space-y-2">
                   <p>Your stay at <span className="font-semibold">{accommodation.name}</span> is confirmed.</p>
                   <p className="text-muted-foreground">Check your email for confirmation details.</p>
