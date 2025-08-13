@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node dist/server.js",
+    "predev": "prisma generate",
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc && prisma generate",
     "postinstall": "prisma generate",
