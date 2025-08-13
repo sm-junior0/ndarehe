@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Hotel, Car, MapPin, HelpCircle, Star, Users, Shield, Clock } from "lucide-react";
+import { Hotel, Car, MapPin, HelpCircle, Star, Users, Shield, Clock, BarChart3, User, Shield as ShieldIcon } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const features = [
@@ -12,7 +13,7 @@ const Index = () => {
       title: "Book a Hotel or House",
       description: "Find perfect accommodations from hotels to homestays across Rwanda",
               href: "/accommodations",
-      color: "bg-blue-50 text-blue-600"
+      color: "bg-green-50 text-green-600"
     },
     {
       icon: Car,
@@ -77,6 +78,9 @@ const Index = () => {
         </div>
       </section>
 
+      {/* User Dashboard Quick Access */}
+      <UserDashboardAccess />
+
       {/* Features Section */}
       <section className="py-16 md:py-24 bg-gradient-to-b from-white to-green-50">
         <div className="container mx-auto px-4">
@@ -129,6 +133,80 @@ const Index = () => {
 
       <Footer />
     </div>
+  );
+};
+
+// User Dashboard Access Component
+const UserDashboardAccess = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return null; // Don't show if user is not logged in
+  }
+
+  const getDashboardInfo = () => {
+    switch (user.role) {
+      case 'ADMIN':
+        return {
+          title: 'Admin Dashboard',
+          description: 'Manage the entire platform',
+          icon: BarChart3,
+          href: '/admin',
+          color: 'bg-red-600 hover:bg-red-700'
+        };
+      case 'PROVIDER':
+        return {
+          title: 'Provider Dashboard',
+          description: 'Manage your services and bookings',
+          icon: ShieldIcon,
+          href: '/provider-dashboard',
+          color: 'bg-purple-600 hover:bg-purple-700'
+        };
+      case 'USER':
+      default:
+        return {
+          title: 'User Dashboard',
+          description: 'View your bookings and profile',
+          icon: User,
+          href: '/dashboard',
+          color: 'bg-blue-600 hover:bg-blue-700'
+        };
+    }
+  };
+
+  const dashboardInfo = getDashboardInfo();
+
+  return (
+    <section className="py-8 bg-white border-b">
+      <div className="container mx-auto px-4">
+        <div className="max-w-4xl mx-auto">
+          <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-blue-50">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="p-3 bg-white rounded-full shadow-md">
+                    <dashboardInfo.icon className="h-6 w-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Welcome back, {user.firstName}!
+                    </h3>
+                    <p className="text-gray-600">
+                      {dashboardInfo.description}
+                    </p>
+                  </div>
+                </div>
+                <Button asChild className={dashboardInfo.color}>
+                  <Link to={dashboardInfo.href}>
+                    Go to Dashboard
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </section>
   );
 };
 

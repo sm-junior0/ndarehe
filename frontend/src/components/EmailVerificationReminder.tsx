@@ -72,23 +72,23 @@ const EmailVerificationReminder = ({ isOpen, onClose, onVerified }: EmailVerific
         </DialogHeader>
 
         <div className="space-y-4">
-          <Card className="bg-blue-50 border-blue-200">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Mail className="h-5 w-5 text-blue-600" />
-                <CardTitle className="text-lg text-blue-800">Verification Email Sent</CardTitle>
+          <Card className="bg-green-50 border-green-200">
+            <CardHeader className="flex flex-row items-center space-y-0 pb-2">
+              <div className="p-2 bg-green-100 rounded-full">
+                <Mail className="h-5 w-5 text-green-600" />
               </div>
+              <CardTitle className="text-lg text-green-800">Verification Email Sent</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-blue-700 mb-3">
-                We sent a verification email to <strong>{user?.email}</strong>
+              <p className="text-green-700 mb-3">
+                We've sent a verification email to <strong>{user?.email}</strong>. Please check your inbox and click the verification link.
               </p>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-blue-300 text-blue-700">
-                  Check your inbox
+              <div className="flex gap-2">
+                <Badge variant="outline" className="border-green-300 text-green-700">
+                  Check Spam Folder
                 </Badge>
-                <Badge variant="outline" className="border-blue-300 text-blue-700">
-                  Check spam folder
+                <Badge variant="outline" className="border-green-300 text-green-700">
+                  Resend Email
                 </Badge>
               </div>
             </CardContent>

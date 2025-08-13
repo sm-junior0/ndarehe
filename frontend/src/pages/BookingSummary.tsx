@@ -186,7 +186,7 @@ const BookingSummary = () => {
       case 'ACCOMMODATION':
         return <Check className="h-4 w-4 text-green-600" />;
       case 'TRANSPORTATION':
-        return <MessageCircle className="h-4 w-4 text-blue-600" />;
+        return <MessageCircle className="h-4 w-4 text-green-600" />;
       case 'TOUR':
         return <Download className="h-4 w-4 text-purple-600" />;
       default:

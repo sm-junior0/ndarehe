@@ -15,12 +15,11 @@ const Explore = () => {
 
   const services = [
     {
-      id: "accommodations",
+      id: 1,
       title: "Accommodations",
-      description: "Find perfect places to stay across Rwanda",
-      icon: Hotel,
+      description: "Find the perfect place to stay in Rwanda",
       href: "/accommodations",
-      color: "bg-blue-50 text-blue-600"
+      color: "bg-green-50 text-green-600"
     },
     {
       id: "transportation",

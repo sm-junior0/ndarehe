@@ -193,7 +193,7 @@ const UserDashboard = () => {
       CONFIRMED: { color: "bg-green-100 text-green-800", icon: CheckCircle },
       PENDING: { color: "bg-yellow-100 text-yellow-800", icon: Clock },
       CANCELLED: { color: "bg-red-100 text-red-800", icon: XCircle },
-      COMPLETED: { color: "bg-blue-100 text-blue-800", icon: CheckCircle }
+      COMPLETED: { color: "bg-green-100 text-green-800", icon: CheckCircle }
     };
     
     const config = statusConfig[status as keyof typeof statusConfig];

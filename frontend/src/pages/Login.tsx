@@ -38,8 +38,20 @@ const Login = () => {
           description: `Welcome back, ${response.data.user.firstName}!`,
         });
         
-        // Always go to dashboard after login
-        navigate('/dashboard');
+        // Redirect based on user role
+        const userRole = response.data.user.role;
+        switch (userRole) {
+          case 'ADMIN':
+            navigate('/admin');
+            break;
+          case 'PROVIDER':
+            navigate('/provider-dashboard');
+            break;
+          case 'USER':
+          default:
+            navigate('/dashboard');
+            break;
+        }
       }
     } catch (err: any) {
       console.error("Login error:", err);

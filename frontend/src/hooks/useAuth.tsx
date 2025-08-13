@@ -42,10 +42,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Clear any persisted auth on app start to avoid stale sessions across restarts
-    localStorage.removeItem("token");
-    setToken(null);
-    setUser(null);
+    // Check for existing token on app start
+    const existingToken = localStorage.getItem("token");
+    if (existingToken) {
+      setToken(existingToken);
+      // Decode token to get user info
+      const decoded = decodeToken(existingToken);
+      if (decoded && decoded.user) {
+        setUser(decoded.user);
+      } else if (decoded && decoded.id && decoded.email && decoded.role) {
+        // Fallback: create user object from token payload
+        const userFromToken = {
+          id: decoded.id,
+          email: decoded.email,
+          firstName: decoded.firstName || "",
+          lastName: decoded.lastName || "",
+          role: decoded.role,
+          isVerified: decoded.isVerified || false
+        };
+        setUser(userFromToken);
+      } else {
+        // Final fallback: set basic user info
+        setUser({ id: "", email: "", firstName: "", lastName: "", role: "USER" });
+      }
+    } else {
+      // Final fallback: set basic user info
+      setUser({ id: "", email: "", firstName: "", lastName: "", role: "USER" });
+    }
   }, []);
 
   const login = (newToken: string, userData?: User) => {
@@ -59,8 +82,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const decoded = decodeToken(newToken);
       if (decoded && decoded.user) {
         setUser(decoded.user);
+      } else if (decoded && decoded.id && decoded.email && decoded.role) {
+        // Fallback: create user object from token payload
+        const userFromToken = {
+          id: decoded.id,
+          email: decoded.email,
+          firstName: decoded.firstName || "",
+          lastName: decoded.lastName || "",
+          role: decoded.role,
+          isVerified: decoded.isVerified || false
+        };
+        setUser(userFromToken);
       } else {
-        // Fallback: set basic user info
+        // Final fallback: set basic user info
         setUser({ id: "", email: "", firstName: "", lastName: "", role: "USER" });
       }
     }
@@ -74,13 +108,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateUserVerification = (isVerified: boolean) => {
     if (user) {
-      console.log('Updating user verification status:', isVerified);
       setUser({ ...user, isVerified });
     }
   };
 
   const updateUser = (userData: User) => {
-    console.log('Updating user data:', userData);
     setUser(userData);
   };
 
@@ -93,6 +125,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (error) {
         console.error('Failed to refresh user data:', error);
+        // If refresh fails, try to decode token again
+        const decoded = decodeToken(token);
+        if (decoded && decoded.user) {
+          setUser(decoded.user);
+        }
       }
     }
   };
