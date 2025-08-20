@@ -18,7 +18,7 @@ export const ExportReportModal: React.FC<ExportModalProps> = ({ open, onOpenChan
   const buildCsv = async (): Promise<string> => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/admin/dashboard', {
+      const res = await fetch('https://ndarehe.onrender.com/api/admin/dashboard', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const json = await res.json();
