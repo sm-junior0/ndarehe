@@ -18,83 +18,138 @@ import {
   Plus,
   Search,
   Filter,
-  Download
+  Download,
+  LogOut as Logout,
+  Settings
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { adminApi } from "@/lib/api";
 import UsersManagement from "./admin/UsersManagement";
 import AccommodationsManagement from "./admin/AccommodationsManagement";
 import BookingsManagement from "./admin/BookingsManagement";
+import TransportationManagement from "./admin/TransportationManagement";
+import ToursManagement from "./admin/ToursManagement";
+import ReportsPanel from "./admin/ReportsPanel";
+import SettingsPanel from "./admin/SettingsPanel";
+import AnalyticsPanel from "./admin/AnalyticsPanel";
+import NotificationsPanel from "./admin/NotificationsPanel";
+import HelpPanel from "./admin/HelpPanel";
+import { AddNewModal, ExportReportModal } from "./admin/DashboardModals";
+import { useNavigate } from "react-router-dom";
 
 const AdminDashboard: React.FC = () => {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState({
     totalUsers: 0,
+    totalAccommodations: 0,
+    totalTours: 0,
+    totalTransportation: 0,
     totalBookings: 0,
     totalRevenue: 0,
     pendingBookings: 0,
-    activeAccommodations: 0,
-    activeTours: 0,
-    activeTransportation: 0
+    pendingTripPlans: 0,
+    unverifiedAccommodations: 0,
+    unverifiedTransportation: 0,
   });
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityTotalPages, setActivityTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [addNewOpen, setAddNewOpen] = useState(false);
 
   useEffect(() => {
     // Fetch dashboard stats and recent activity from backend
     const fetchDashboard = async () => {
       setLoading(true);
       try {
-        const res = await axios.get('/api/admin/dashboard', {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        if (res.data.success) {
-          setStats(res.data.data.stats);
-          // Combine recent bookings and users for activity feed
-          const bookings = (res.data.data.recentBookings || []).map(b => ({
-            id: b.id,
-            type: 'booking_confirmed',
-            message: `Booking #${b.code || b.id} confirmed for ${b.accommodation?.name || 'Accommodation'}`,
-            timestamp: new Date(b.createdAt).toLocaleString(),
-            priority: b.status === 'CONFIRMED' ? 'medium' : 'low'
-          }));
-          const users = (res.data.data.recentUsers || []).map(u => ({
-            id: u.id,
-            type: 'user_registration',
-            message: `New user registered: ${u.email}`,
-            timestamp: new Date(u.createdAt).toLocaleString(),
-            priority: 'low'
-          }));
-          setRecentActivity([...bookings, ...users]);
+        const res = await adminApi.getDashboard();
+        if ((res as any).success) {
+          const payload = (res as any).data || {};
+          setStats(payload.stats || {});
         }
       } catch (err) {
-        // fallback to empty data
         setStats({
           totalUsers: 0,
+          totalAccommodations: 0,
+          totalTours: 0,
+          totalTransportation: 0,
           totalBookings: 0,
           totalRevenue: 0,
           pendingBookings: 0,
-          activeAccommodations: 0,
-          activeTours: 0,
-          activeTransportation: 0
+          pendingTripPlans: 0,
+          unverifiedAccommodations: 0,
+          unverifiedTransportation: 0,
         });
-        setRecentActivity([]);
       }
+      await loadActivity(1);
       setLoading(false);
     };
     fetchDashboard();
   }, [token]);
 
+  // Auto-refresh activity without full page reload (polling)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadActivity(activityPage);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [activityPage]);
+
+  const loadActivity = async (page: number) => {
+    try {
+      const act = await adminApi.getActivity({ limit: 10, page });
+      if ((act as any).success) {
+        const list = (act as any).data?.activity || [];
+        const meta = (act as any).data?.pagination;
+        const feed = list.map((item: any) => ({
+          id: item.id,
+          type: item.type,
+          message: item.message,
+          timestamp: new Date(item.timestamp).toLocaleString(),
+          priority: ['PAYMENT_FAILED'].includes(item.type) ? 'high' : ['BOOKING_CREATED','ACCOMMODATION_CREATED','TRANSPORTATION_CREATED','TOUR_CREATED','USER_REGISTERED'].includes(item.type) ? 'low' : 'medium'
+        }));
+        setRecentActivity(feed);
+        if (meta) {
+          setActivityPage(meta.page);
+          setActivityTotalPages(meta.totalPages);
+        }
+      }
+    } catch {
+      setRecentActivity([]);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   const getAlertIcon = (type: string) => {
     switch (type) {
-      case 'user_registration':
+      case 'USER_REGISTERED':
         return <Users className="h-4 w-4 text-green-600" />;
-      case 'booking_confirmed':
+      case 'BOOKING_CREATED':
+      case 'BOOKING_CONFIRMED':
+      case 'BOOKING_UPDATED':
         return <Calendar className="h-4 w-4 text-green-600" />;
-      case 'payment_received':
+      case 'PAYMENT_COMPLETED':
         return <TrendingUp className="h-4 w-4 text-green-600" />;
+      case 'PAYMENT_FAILED':
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      case 'ACCOMMODATION_CREATED':
+      case 'ACCOMMODATION_UPDATED':
+      case 'TRANSPORTATION_CREATED':
+      case 'TRANSPORTATION_UPDATED':
+      case 'TOUR_CREATED':
+      case 'TOUR_UPDATED':
+        return <Plus className="h-4 w-4 text-green-600" />;
+      case 'USER_STATUS_UPDATED':
+        return <Users className="h-4 w-4 text-blue-600" />;
+      case 'SYSTEM_SETTING_UPDATED':
+        return <Settings className="h-4 w-4 text-purple-600" />;
       default:
         return <AlertTriangle className="h-4 w-4 text-gray-600" />;
     }
@@ -140,7 +195,6 @@ const AdminDashboard: React.FC = () => {
               { tab: 'reports', label: 'Reports', icon: BarChart3 },
               { tab: 'settings', label: 'Settings', icon: BarChart3 },
               { tab: 'analytics', label: 'Analytics', icon: TrendingUp },
-              { tab: 'notifications', label: 'Notifications', icon: AlertTriangle },
               { tab: 'help', label: 'Help', icon: Eye },
             ].map(({ tab, label, icon: Icon }) => (
               <button
@@ -166,7 +220,16 @@ const AdminDashboard: React.FC = () => {
             ))}
           </div>
         </nav>
-        <div className="p-4 text-xs text-green-100 opacity-70">Admin Panel</div>
+        <div className="p-4 flex flex-col items-center space-y-2">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center px-4 py-2 text-base font-medium rounded-lg bg-white text-green-700 hover:bg-green-100 transition-colors duration-150 shadow"
+          >
+            <Logout className="h-5 w-5 mr-2" />
+            Logout
+          </button>
+          <span className="text-xs text-green-100 opacity-70">Admin Panel</span>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -180,11 +243,11 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-gray-500 text-lg">Welcome back, <span className="font-semibold">{user?.firstName}</span>!</p>
               </div>
               <div className="flex space-x-3">
-                <Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50">
+                <Button variant="outline" className="border-green-600 text-green-700 hover:bg-green-50" onClick={() => setExportOpen(true)}>
                   <Download className="h-4 w-4 mr-2" />
                   Export Report
                 </Button>
-                <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setAddNewOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add New
                 </Button>
@@ -269,6 +332,11 @@ const AdminDashboard: React.FC = () => {
                     ))
                   )}
                 </div>
+                <div className="flex justify-between items-center mt-4">
+                  <Button variant="outline" disabled={activityPage <= 1} onClick={() => loadActivity(activityPage - 1)}>Previous</Button>
+                  <span className="text-sm text-gray-500">Page {activityPage} of {activityTotalPages}</span>
+                  <Button variant="outline" disabled={activityPage >= activityTotalPages} onClick={() => loadActivity(activityPage + 1)}>Next</Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -278,56 +346,18 @@ const AdminDashboard: React.FC = () => {
         {activeTab === 'bookings' && <BookingsManagement />}
         {activeTab === 'users' && <UsersManagement />}
         {activeTab === 'accommodations' && <AccommodationsManagement />}
-        {activeTab === 'transportation' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <Car className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Transportation Management</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'tours' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <MapPin className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Tours Management</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'reports' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <BarChart3 className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Reports</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'settings' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <BarChart3 className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Settings</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'analytics' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <TrendingUp className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Analytics</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'notifications' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <AlertTriangle className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Notifications</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'help' && (
-          <div className="text-center py-16 bg-white rounded-xl shadow">
-            <Eye className="h-14 w-14 text-green-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-green-700 mb-2">Help</h3>
-            <p className="text-gray-500">Coming soon...</p>
-          </div>
-        )}
+        {activeTab === 'transportation' && <TransportationManagement />}
+        {activeTab === 'tours' && <ToursManagement />}
+        {activeTab === 'reports' && <ReportsPanel />}
+        {activeTab === 'settings' && <SettingsPanel />}
+        {activeTab === 'analytics' && <AnalyticsPanel />}
+        {activeTab === 'notifications' && <NotificationsPanel />}
+        {activeTab === 'help' && <HelpPanel />}
       </main>
+
+      {/* Global modals */}
+      <ExportReportModal open={exportOpen} onOpenChange={setExportOpen} />
+      <AddNewModal open={addNewOpen} onOpenChange={setAddNewOpen} />
     </div>
   );
 };

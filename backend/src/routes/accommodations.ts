@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { protect, authorize, optionalAuth } from '../middleware/auth';
 import { validate, accommodationSchemas } from '../middleware/validation';
+import { logActivity } from '../utils/activity';
+import { ActivityType } from '@prisma/client';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -441,6 +443,18 @@ router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodation
         }
       }
     });
+
+    // Log activity
+    try {
+      const actorId = (req as any).user?.id as string | undefined;
+      await logActivity({
+        type: ActivityType.ACCOMMODATION_CREATED,
+        actorUserId: actorId || null,
+        targetType: 'ACCOMMODATION',
+        targetId: accommodation.id,
+        message: `Accommodation added: ${accommodation.name}`,
+      });
+    } catch {}
 
     res.status(201).json({
       success: true,

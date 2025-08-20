@@ -298,12 +298,6 @@ const Transportation = () => {
           </div>
         </div>
 
-        {/* Results */}
-        <div className="mb-6">
-          <p className="text-muted-foreground">
-            Found {filteredTransportation.length} service{filteredTransportation.length !== 1 ? 's' : ''}
-          </p>
-        </div>
 
         {/* Transportation Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -340,8 +334,8 @@ const Transportation = () => {
                 </div>
                 
                 <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span>Per Trip:</span>
+                  <div className="flex gap-2 text-sm">
+                    <span className="font-semibold">Per Trip:</span>
                     <span className="font-medium">
                       {service.pricePerTrip.toLocaleString()} {service.currency}
                     </span>

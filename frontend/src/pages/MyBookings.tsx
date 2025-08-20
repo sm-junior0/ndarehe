@@ -7,84 +7,77 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, MapPin, Users, Clock, Star, ArrowLeft } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/hooks/useAuth";
+import { bookingsApi } from "@/lib/api";
+import BookingDetailsModal from "@/components/BookingDetailsModal";
+import { Booking } from "@/types/types";
 
-interface Booking {
-  id: string;
-  serviceType: string;
-  serviceName: string;
-  startDate: string;
-  endDate?: string;
-  numberOfPeople: number;
-  totalAmount: number;
-  currency: string;
-  status: string;
-  isConfirmed: boolean;
-  isCancelled: boolean;
-  createdAt: string;
-  location: string;
-  image: string;
-}
+
 
 const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Mock data
-  const mockBookings: Booking[] = [
-    {
-      id: "1",
-      serviceType: "ACCOMMODATION",
-      serviceName: "Kigali Heights Hotel",
-      startDate: "2024-02-15",
-      endDate: "2024-02-18",
-      numberOfPeople: 2,
-      totalAmount: 450000,
-      currency: "RWF",
-      status: "CONFIRMED",
-      isConfirmed: true,
-      isCancelled: false,
-      createdAt: "2024-01-20",
-      location: "Kigali",
-      image: "/placeholder.svg"
-    },
-    {
-      id: "2",
-      serviceType: "TOUR",
-      serviceName: "Gorilla Trekking Adventure",
-      startDate: "2024-03-10",
-      numberOfPeople: 1,
-      totalAmount: 150000,
-      currency: "RWF",
-      status: "PENDING",
-      isConfirmed: false,
-      isCancelled: false,
-      createdAt: "2024-01-25",
-      location: "Volcanoes National Park",
-      image: "/placeholder.svg"
-    },
-    {
-      id: "3",
-      serviceType: "TRANSPORTATION",
-      serviceName: "Airport Pickup Service",
-      startDate: "2024-02-15",
-      numberOfPeople: 2,
-      totalAmount: 25000,
-      currency: "RWF",
-      status: "COMPLETED",
-      isConfirmed: true,
-      isCancelled: false,
-      createdAt: "2024-01-15",
-      location: "Kigali Airport",
-      image: "/placeholder.svg"
-    }
-  ];
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    setTimeout(() => {
-      setBookings(mockBookings);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    const fetchBookings = async () => {
+      try {
+        if (!user) return;
+
+        const response = await bookingsApi.getAll();
+
+        if (response.success) {
+          const formattedBookings = response.data.bookings.map((booking: any) => ({
+            id: booking.id,
+            serviceType: booking.serviceType,
+            serviceName: getServiceName(booking),
+            startDate: booking.startDate,
+            endDate: booking.endDate,
+            numberOfPeople: booking.numberOfPeople,
+            totalAmount: booking.totalAmount,
+            currency: booking.currency,
+            status: booking.status,
+            isConfirmed: booking.status === 'CONFIRMED',
+            isCancelled: booking.status === 'CANCELLED',
+            createdAt: booking.createdAt,
+            location: getLocation(booking),
+            image: getImage(booking),
+            ...booking
+          }));
+
+          setBookings(formattedBookings);
+        }
+      } catch (error) {
+        console.error("Failed to fetch bookings:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, [user]);
+
+  const getServiceName = (booking: any): string => {
+    if (booking.accommodation) return booking.accommodation.name;
+    if (booking.transportation) return booking.transportation.name;
+    if (booking.tour) return booking.tour.name;
+    return "Unknown Service";
+  };
+
+  const getLocation = (booking: any): string => {
+    if (booking.accommodation?.location) return booking.accommodation.location.city;
+    if (booking.transportation?.location) return booking.transportation.location.city;
+    if (booking.tour?.location) return booking.tour.location.city;
+    return "Unknown Location";
+  };
+
+  const getImage = (booking: any): string => {
+    if (booking.accommodation?.images?.length) return booking.accommodation.images[0];
+    if (booking.transportation?.images?.length) return booking.transportation.images[0];
+    if (booking.tour?.images?.length) return booking.tour.images[0];
+    return "/placeholder.svg";
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -149,7 +142,7 @@ const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
   return (
     <div className="min-h-screen bg-background">
       {showLayout && <Header />}
-      
+
       <main className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -176,31 +169,51 @@ const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
 
           <TabsContent value="all" className="space-y-4">
             {bookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onViewDetails={() => setSelectedBooking(booking)}
+              />
             ))}
           </TabsContent>
 
           <TabsContent value="confirmed" className="space-y-4">
             {confirmedBookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onViewDetails={() => setSelectedBooking(booking)}
+              />
             ))}
           </TabsContent>
 
           <TabsContent value="pending" className="space-y-4">
             {pendingBookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onViewDetails={() => setSelectedBooking(booking)}
+              />
             ))}
           </TabsContent>
 
           <TabsContent value="completed" className="space-y-4">
             {completedBookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onViewDetails={() => setSelectedBooking(booking)}
+              />
             ))}
           </TabsContent>
 
           <TabsContent value="cancelled" className="space-y-4">
             {cancelledBookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onViewDetails={() => setSelectedBooking(booking)}
+              />
             ))}
           </TabsContent>
         </Tabs>
@@ -213,6 +226,11 @@ const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
             </Button>
           </div>
         )}
+
+        <BookingDetailsModal
+          booking={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+        />
       </main>
 
       {showLayout && <Footer />}
@@ -220,7 +238,12 @@ const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
   );
 };
 
-const BookingCard = ({ booking }: { booking: Booking }) => {
+interface BookingCardProps {
+  booking: Booking;
+  onViewDetails: () => void;
+}
+
+const BookingCard = ({ booking, onViewDetails }: BookingCardProps) => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
@@ -306,17 +329,30 @@ const BookingCard = ({ booking }: { booking: Booking }) => {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={onViewDetails}>
               View Details
             </Button>
             {booking.status === 'PENDING' && (
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    await bookingsApi.cancel(booking.id);
+                    // Update local state or refresh data
+                  } catch (error) {
+                    console.error("Failed to cancel booking:", error);
+                  }
+                }}
+              >
                 Cancel Booking
               </Button>
             )}
             {booking.status === 'COMPLETED' && (
-              <Button variant="outline" size="sm">
-                Write Review
+              <Button variant="outline" size="sm" asChild>
+                <Link to={`/review/${booking.id}`}>
+                  Write Review
+                </Link>
               </Button>
             )}
           </div>
@@ -325,5 +361,4 @@ const BookingCard = ({ booking }: { booking: Booking }) => {
     </Card>
   );
 };
-
 export default MyBookings; 

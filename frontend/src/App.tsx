@@ -34,8 +34,12 @@ import RootRouteHandler from "./components/RootRouteHandler";
 import WhatsAppSupport from "./components/WhatsAppSupport";
 import { AuthProvider } from "./hooks/useAuth";
 import { Toaster } from "./components/ui/toaster";
+import DashboardLayout from "./components/DashboardLayout";
+import { useAuth } from "./hooks/useAuth";
+import { Navigate } from "react-router-dom";
 
 function App() {
+  const { user } = useAuth();
   return (
     <AuthProvider>
       <Router>
@@ -54,31 +58,54 @@ function App() {
             <Route path="/local-experiences" element={<LocalExperiences />} />
             <Route path="/trip-planner" element={<TripPlanner />} />
             <Route path="/booking-summary" element={<BookingSummary />} />
-            
-            {/* Role-based protected routes */}
-            <Route path="/admin" element={
-              <RoleBasedRoute allowedRoles={["ADMIN"]}>
-                <Admin />
-              </RoleBasedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <RoleBasedRoute allowedRoles={["USER"]}>
-                <UserDashboard />
-              </RoleBasedRoute>
-            } />
-            <Route path="/provider-dashboard" element={
-              <RoleBasedRoute allowedRoles={["PROVIDER"]}>
-                <ProviderDashboard />
-              </RoleBasedRoute>
-            } />
-            
+
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={["USER"]}>
+                  <UserDashboard />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={["ADMIN"]}>
+                  <Admin />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/provider-dashboard" element={
+              <ProtectedRoute>
+                <RoleBasedRoute allowedRoles={["PROVIDER"]}>
+                  <ProviderDashboard />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/accommodations" element={<ProtectedRoute><AccommodationsDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/transportation" element={<ProtectedRoute><TransportationDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/airport-pickup" element={<ProtectedRoute><AirportPickupDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/tours" element={<ProtectedRoute><ToursDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/blog" element={<ProtectedRoute><BlogDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/my-bookings" element={<ProtectedRoute><MyBookingsDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/notifications" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/accommodations/:id" element={
+              <DashboardLayout title="Accommodation Details">
+                <AccommodationDetails />
+              </DashboardLayout>} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/explore" element={<Explore />} />
-            
+
+            {/* Protected Routes */}
+            <Route path="/blog" element={<Blog />} />
+            <Route path="/explore" element={<Explore />} />
+
             {/* Protected dashboard sub-routes */}
             <Route path="/dashboard/accommodations" element={
               <RoleBasedRoute allowedRoles={["USER"]}>
@@ -115,7 +142,7 @@ function App() {
                 <ProfileDashboard />
               </RoleBasedRoute>
             } />
-            
+
             {/* Protected service routes */}
             <Route path="/accommodations" element={
               <ProtectedRoute>
@@ -148,10 +175,10 @@ function App() {
               </ProtectedRoute>
             } />
           </Routes>
-          
+
           {/* Global WhatsApp Support */}
           <WhatsAppSupport />
-          
+
           {/* Global Toaster */}
           <Toaster />
         </div>

@@ -1,8 +1,8 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import rateLimit from 'express-rate-limit';
 import { prisma } from '../config/database';
+import { logActivity } from '../utils/activity';
 import { protect } from '../middleware/auth';
 import { validate, authSchemas } from '../middleware/validation';
 import { sendEmail, emailTemplates } from '../utils/email';
@@ -11,47 +11,11 @@ import { AuthenticatedRequest, JWTPayload } from '../types';
 
 const router = express.Router();
 
-// In-memory store to track recently processed verification tokens
-// In production, consider using Redis for this
-const recentlyProcessedTokens = new Map<string, number>();
-
-// Clean up old tokens every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  const fiveMinutesAgo = now - 5 * 60 * 1000;
-  
-  for (const [token, timestamp] of recentlyProcessedTokens.entries()) {
-    if (timestamp < fiveMinutesAgo) {
-      recentlyProcessedTokens.delete(token);
-    }
-  }
-}, 5 * 60 * 1000);
-
-// Rate limiter for email verification - more restrictive
-const emailVerificationLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 3, // limit each IP to 3 email verification requests per minute
-  message: {
-    success: false,
-    data: null,
-    message: 'Too many verification attempts. Please wait a moment before trying again.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limiter for resend verification - even more restrictive
-const resendVerificationLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 2, // limit each IP to 2 resend requests per 5 minutes
-  message: {
-    success: false,
-    data: null,
-    message: 'Too many resend requests. Please wait 5 minutes before requesting another verification email.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+enum ActivityType {
+  USER_REGISTERED = 'USER_REGISTERED',
+  USER_LOGGED_IN = 'USER_LOGGED_IN',
+  USER_LOGGED_OUT = 'USER_LOGGED_OUT'
+}
 
 /**
  * @swagger
@@ -222,6 +186,15 @@ router.post('/register', validate(authSchemas.register), async (req, res, next) 
       }
     });
 
+    // Log activity
+    logActivity({
+      type: ActivityType.USER_REGISTERED,
+      actorUserId: user.id,
+      targetType: 'USER',
+      targetId: user.id,
+      message: `User registered: ${user.email}`,
+    }).catch(() => {});
+
     // Generate verification token
     const verificationToken = generateEmailVerificationToken(user.id);
 
@@ -318,6 +291,15 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
         token
       }
     });
+
+    // Log activity
+    logActivity({
+      type: ActivityType.USER_LOGGED_IN,
+      actorUserId: user.id,
+      targetType: 'USER',
+      targetId: user.id,
+      message: `User logged in: ${user.email}`,
+    }).catch(() => {});
   } catch (error) {
     next(error);
   }
@@ -326,157 +308,38 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
 // @desc    Verify email
 // @route   POST /api/auth/verify-email
 // @access  Public
-router.post('/verify-email', emailVerificationLimiter, async (req, res, next) => {
+router.get('/verify-email', async (req, res, next) => {
   try {
-    const { token } = req.body;
+    const { token } = req.query; // Extract token from URL (?token=...)
 
     if (!token) {
       return res.status(400).json({
         success: false,
-        data: null,
-        message: 'Verification token is required'
-      });
-    }
-
-    // Check if this token was recently processed
-    const now = Date.now();
-    const recentlyProcessed = recentlyProcessedTokens.get(token);
-    
-    if (recentlyProcessed && (now - recentlyProcessed) < 30000) { // 30 seconds
-      return res.status(429).json({
-        success: false,
-        data: null,
-        message: 'This verification link was recently used. Please wait a moment before trying again.'
+        error: 'Verification token is required'
       });
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
-    const userId = decoded.userId;
+    const decoded = jwt.verify(token as string, process.env.JWT_SECRET!) as { userId: string };
     
-    // Check if user exists and get current verification status
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId }
-    });
-
-    if (!existingUser) {
-      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
-      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-      if (shouldRedirect && frontendUrl) {
-        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
-      }
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: 'User not found'
-      });
-    }
-
-    // Check if already verified
-    if (existingUser.isVerified) {
-      return res.json({
-        success: true,
-        data: { user: { id: existingUser.id, email: existingUser.email, isVerified: existingUser.isVerified } },
-        message: 'Email is already verified'
-      });
-    }
-    
-    // Mark token as processed to prevent duplicates
-    recentlyProcessedTokens.set(token, now);
-
-    // Update user verification status
+    // Update user
     const user = await prisma.user.update({
-      where: { id: userId },
+      where: { id: decoded.userId },
       data: { isVerified: true }
     });
 
-    // Send verification success email
-    try {
-      const { subject, html } = emailTemplates.emailVerified(user.firstName);
-      await sendEmail(user.email, subject, html);
-    } catch (emailError) {
-      console.error('Failed to send verification success email:', emailError);
-    }
-
+    // Send success response (or redirect to frontend)
     res.json({
       success: true,
-      data: { user: { id: user.id, email: user.email, isVerified: user.isVerified } },
       message: 'Email verified successfully'
     });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      const shouldRedirect = (req.query.redirect ?? 'true') !== 'false';
-      const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-      if (shouldRedirect && frontendUrl) {
-        return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=invalid`);
-      }
       return res.status(400).json({
         success: false,
-        data: null,
-        message: 'Invalid or expired verification token'
+        error: 'Invalid or expired verification token'
       });
     }
-    next(error);
-  }
-});
-
-// @desc    Resend verification email
-// @route   POST /api/auth/resend-verification
-// @access  Public
-router.post('/resend-verification', resendVerificationLimiter, async (req, res, next) => {
-  try {
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: 'Email is required'
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        data: null,
-        message: 'User not found'
-      });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({
-        success: false,
-        data: null,
-        message: 'Email is already verified'
-      });
-    }
-
-    // Generate new verification token
-    const verificationToken = generateEmailVerificationToken(user.id);
-
-    // Send verification email
-    try {
-      const { subject, html } = emailTemplates.welcome(user.firstName, verificationToken);
-      await sendEmail(user.email, subject, html);
-    } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
-      return res.status(500).json({
-        success: false,
-        data: null,
-        message: 'Failed to send verification email'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: { message: 'Verification email sent successfully' },
-      message: 'Verification email sent successfully'
-    });
-  } catch (error) {
     next(error);
   }
 });
@@ -589,10 +452,22 @@ router.get('/me', protect, async (req: AuthenticatedRequest, res, next) => {
 // @route   POST /api/auth/logout
 // @access  Private
 router.post('/logout', protect, (req, res) => {
+
   res.json({
     success: true,
     message: 'Logged out successfully'
   });
+
+  // Log activity
+  if ((req as any).user?.id && (req as any).user?.email) {
+    logActivity({
+      type: ActivityType.USER_LOGGED_OUT,
+      actorUserId: (req as any).user.id,
+      targetType: 'USER',
+      targetId: (req as any).user.id,
+      message: `User logged out: ${(req as any).user.email}`,
+    }).catch(() => {});
+  }
 });
 
 export default router; 

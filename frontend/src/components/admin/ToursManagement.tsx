@@ -6,27 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Hotel, Plus, Eye, Edit, CheckCircle, XCircle, MapPin, Search, Filter, DollarSign, Download } from "lucide-react";
+import { MapPin, Plus, Eye, Edit, XCircle, CheckCircle, Search, Filter, Clock, Users, DollarSign, Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { adminApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
-interface Accommodation {
+interface TourItem {
   id: string;
   name: string;
   description: string;
   type: string;
   category: string;
   location: { id: string; name: string; city: string; district: string; province: string };
-  pricePerNight: number;
+  duration: number;
+  maxParticipants: number;
+  minParticipants: number;
+  pricePerPerson: number;
   currency: string;
-  maxGuests: number;
-  bedrooms: number;
-  bathrooms: number;
-  amenities: string[];
-  images: string[];
   isAvailable: boolean;
   isVerified: boolean;
+  images: string[];
   rating?: number;
   totalReviews?: number;
 }
@@ -39,10 +38,10 @@ interface Location {
   province: string;
 }
 
-const AccommodationsManagement: React.FC = () => {
+const ToursManagement: React.FC = () => {
   const { token } = useAuth();
   const { toast } = useToast();
-  const [items, setItems] = useState<Accommodation[]>([]);
+  const [items, setItems] = useState<TourItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -60,16 +59,20 @@ const AccommodationsManagement: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    type: 'HOTEL',
+    type: 'CITY_TOUR',
     category: 'STANDARD',
     locationId: '',
-    address: '',
-    pricePerNight: '',
+    duration: '',
+    maxParticipants: '',
+    minParticipants: '',
+    pricePerPerson: '',
     currency: 'RWF',
-    maxGuests: '',
-    bedrooms: '',
-    bathrooms: '',
-    amenities: '',
+    itinerary: '',
+    includes: '',
+    excludes: '',
+    meetingPoint: '',
+    startTime: '',
+    endTime: '',
     images: ''
   });
 
@@ -108,30 +111,29 @@ const AccommodationsManagement: React.FC = () => {
         params.isVerified = verifiedFilter === 'verified';
       }
 
-      const response = await adminApi.getAccommodations(token, params);
+      const response = await adminApi.getTours(token, params);
       if (response.data.success) {
         const data = response.data.data;
-        const list = Array.isArray(data?.accommodations) ? data.accommodations : [];
+        const list = Array.isArray(data?.tours) ? data.tours : [];
         
         // Map to local shape
-        const shaped: Accommodation[] = list.map((a: any) => ({
-          id: a.id,
-          name: a.name,
-          description: a.description,
-          type: a.type,
-          category: a.category,
-          location: a.location,
-          pricePerNight: a.pricePerNight,
-          currency: a.currency,
-          maxGuests: a.maxGuests,
-          bedrooms: a.bedrooms,
-          bathrooms: a.bathrooms,
-          amenities: a.amenities || [],
-          images: a.images || [],
-          isAvailable: a.isAvailable,
-          isVerified: a.isVerified,
-          rating: a.rating,
-          totalReviews: a.totalReviews,
+        const shaped: TourItem[] = list.map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          type: t.type,
+          category: t.category,
+          location: t.location,
+          duration: t.duration,
+          maxParticipants: t.maxParticipants,
+          minParticipants: t.minParticipants,
+          pricePerPerson: t.pricePerPerson,
+          currency: t.currency,
+          isAvailable: t.isAvailable,
+          isVerified: t.isVerified,
+          images: t.images || [],
+          rating: t.rating,
+          totalReviews: t.totalReviews,
         }));
         
         setItems(shaped);
@@ -142,10 +144,10 @@ const AccommodationsManagement: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching accommodations:', error);
+      console.error('Error fetching tours:', error);
       toast({
         title: 'Error',
-        description: 'Failed to fetch accommodations',
+        description: 'Failed to fetch tours',
         variant: 'destructive'
       });
     } finally {
@@ -153,36 +155,36 @@ const AccommodationsManagement: React.FC = () => {
     }
   };
 
-  const handleVerifyAccommodation = async (accommodationId: string, isVerified: boolean) => {
+  const handleVerifyTour = async (tourId: string, isVerified: boolean) => {
     if (!token) return;
     
     try {
-      const response = await adminApi.verifyAccommodation(token, accommodationId, isVerified);
+      const response = await adminApi.verifyTour(token, tourId, isVerified);
       
       if (response.data.success) {
         // Update local state
         setItems(items.map(item => 
-          item.id === accommodationId 
+          item.id === tourId 
             ? { ...item, isVerified }
             : item
         ));
         
         toast({
           title: 'Success',
-          description: `Accommodation ${isVerified ? 'verified' : 'unverified'} successfully`,
+          description: `Tour ${isVerified ? 'verified' : 'unverified'} successfully`,
         });
       }
     } catch (error) {
-      console.error('Error updating accommodation verification:', error);
+      console.error('Error updating tour verification:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update accommodation verification',
+        description: 'Failed to update tour verification',
         variant: 'destructive'
       });
     }
   };
 
-  const handleCreateAccommodation = async () => {
+  const handleCreateTour = async () => {
     if (!token) return;
     
     setSubmitting(true);
@@ -193,22 +195,26 @@ const AccommodationsManagement: React.FC = () => {
         type: formData.type,
         category: formData.category,
         locationId: formData.locationId,
-        address: formData.address,
-        pricePerNight: parseFloat(formData.pricePerNight),
+        duration: parseInt(formData.duration),
+        maxParticipants: parseInt(formData.maxParticipants),
+        minParticipants: parseInt(formData.minParticipants),
+        pricePerPerson: parseFloat(formData.pricePerPerson),
         currency: formData.currency,
-        maxGuests: parseInt(formData.maxGuests),
-        bedrooms: parseInt(formData.bedrooms),
-        bathrooms: parseInt(formData.bathrooms),
-        amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
+        itinerary: formData.itinerary.split(',').map(s => s.trim()).filter(Boolean),
+        includes: formData.includes.split(',').map(s => s.trim()).filter(Boolean),
+        excludes: formData.excludes.split(',').map(s => s.trim()).filter(Boolean),
+        meetingPoint: formData.meetingPoint,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
       };
 
-      const response = await adminApi.createAccommodation(token, payload);
+      const response = await adminApi.createTour(token, payload);
       
       if (response.data.success) {
         toast({
           title: 'Success',
-          description: 'Accommodation created successfully',
+          description: 'Tour created successfully',
         });
         setAddNewOpen(false);
         resetForm();
@@ -216,14 +222,14 @@ const AccommodationsManagement: React.FC = () => {
       } else {
         toast({
           title: 'Error',
-          description: response.data.error || 'Failed to create accommodation',
+          description: response.data.error || 'Failed to create tour',
           variant: 'destructive'
         });
       }
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.response?.data?.error || error.message || 'Failed to create accommodation',
+        description: error.response?.data?.error || error.message || 'Failed to create tour',
         variant: 'destructive'
       });
     } finally {
@@ -235,44 +241,48 @@ const AccommodationsManagement: React.FC = () => {
     setFormData({
       name: '',
       description: '',
-      type: 'HOTEL',
+      type: 'CITY_TOUR',
       category: 'STANDARD',
       locationId: '',
-      address: '',
-      pricePerNight: '',
+      duration: '',
+      maxParticipants: '',
+      minParticipants: '',
+      pricePerPerson: '',
       currency: 'RWF',
-      maxGuests: '',
-      bedrooms: '',
-      bathrooms: '',
-      amenities: '',
+      itinerary: '',
+      includes: '',
+      excludes: '',
+      meetingPoint: '',
+      startTime: '',
+      endTime: '',
       images: ''
     });
   };
 
-  const exportAccommodations = async () => {
+  const exportTours = async () => {
     if (!token) return;
     
     try {
-      // Fetch all accommodations for export (without pagination)
-      const response = await adminApi.getAccommodations(token, { limit: 1000 });
+      // Fetch all tours for export (without pagination)
+      const response = await adminApi.getTours(token, { limit: 1000 });
       if (response.data.success) {
-        const allAccommodations = response.data.data.accommodations || [];
+        const allTours = response.data.data.tours || [];
         
         const csvContent = [
-          ['ID', 'Name', 'Type', 'Category', 'Location', 'Price/Night', 'Currency', 'Max Guests', 'Bedrooms', 'Bathrooms', 'Verified', 'Available'],
-          ...allAccommodations.map((acc: any) => [
-            acc.id,
-            acc.name,
-            acc.type,
-            acc.category,
-            acc.location?.city || '',
-            acc.pricePerNight,
-            acc.currency,
-            acc.maxGuests,
-            acc.bedrooms,
-            acc.bathrooms,
-            acc.isVerified ? 'Yes' : 'No',
-            acc.isAvailable ? 'Yes' : 'No'
+          ['ID', 'Name', 'Type', 'Category', 'Location', 'Duration (hours)', 'Max Participants', 'Min Participants', 'Price/Person', 'Currency', 'Verified', 'Available'],
+          ...allTours.map((tour: any) => [
+            tour.id,
+            tour.name,
+            tour.type,
+            tour.category,
+            tour.location?.city || '',
+            tour.duration,
+            tour.maxParticipants,
+            tour.minParticipants,
+            tour.pricePerPerson,
+            tour.currency,
+            tour.isVerified ? 'Yes' : 'No',
+            tour.isAvailable ? 'Yes' : 'No'
           ])
         ].map(row => row.join(',')).join('\n');
 
@@ -280,7 +290,7 @@ const AccommodationsManagement: React.FC = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `accommodations-export-${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `tours-export-${new Date().toISOString().slice(0,10)}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -288,14 +298,14 @@ const AccommodationsManagement: React.FC = () => {
         
         toast({
           title: 'Success',
-          description: 'Accommodations exported successfully',
+          description: 'Tours exported successfully',
         });
       }
     } catch (error) {
-      console.error('Error exporting accommodations:', error);
+      console.error('Error exporting tours:', error);
       toast({
         title: 'Error',
-        description: 'Failed to export accommodations',
+        description: 'Failed to export tours',
         variant: 'destructive'
       });
     }
@@ -315,8 +325,8 @@ const AccommodationsManagement: React.FC = () => {
   };
 
   const filteredItems = useMemo(() => {
-    return items.filter((a) => {
-      const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.location?.city?.toLowerCase().includes(searchTerm.toLowerCase());
+    return items.filter((t) => {
+      const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.location?.city?.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesSearch;
     });
   }, [items, searchTerm]);
@@ -324,7 +334,7 @@ const AccommodationsManagement: React.FC = () => {
   if (loading && items.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading accommodations...</div>
+        <div className="text-gray-500">Loading tours...</div>
       </div>
     );
   }
@@ -334,17 +344,17 @@ const AccommodationsManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Accommodations Management</h2>
-          <p className="text-gray-600">Search, review and verify accommodations</p>
+          <h2 className="text-2xl font-bold text-gray-900">Tours Management</h2>
+          <p className="text-gray-600">Search, review and verify tours</p>
         </div>
         <div className="flex space-x-3">
-          <Button variant="outline" onClick={exportAccommodations}>
+          <Button variant="outline" onClick={exportTours}>
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
           <Button onClick={() => setAddNewOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Add New Accommodation
+            Add New Tour
           </Button>
         </div>
       </div>
@@ -369,13 +379,12 @@ const AccommodationsManagement: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="HOTEL">Hotel</SelectItem>
-                <SelectItem value="GUESTHOUSE">Guesthouse</SelectItem>
-                <SelectItem value="APARTMENT">Apartment</SelectItem>
-                <SelectItem value="VILLA">Villa</SelectItem>
-                <SelectItem value="HOSTEL">Hostel</SelectItem>
-                <SelectItem value="CAMPING">Camping</SelectItem>
-                <SelectItem value="HOMESTAY">Homestay</SelectItem>
+                <SelectItem value="CITY_TOUR">City Tour</SelectItem>
+                <SelectItem value="NATURE_TOUR">Nature Tour</SelectItem>
+                <SelectItem value="CULTURAL_TOUR">Cultural Tour</SelectItem>
+                <SelectItem value="ADVENTURE_TOUR">Adventure Tour</SelectItem>
+                <SelectItem value="FOOD_TOUR">Food Tour</SelectItem>
+                <SelectItem value="HISTORICAL_TOUR">Historical Tour</SelectItem>
               </SelectContent>
             </Select>
             <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); handleFilterChange(); }}>
@@ -426,54 +435,54 @@ const AccommodationsManagement: React.FC = () => {
       {/* Grid */}
       <Card>
         <CardHeader>
-          <CardTitle>All Accommodations ({totalItems} total)</CardTitle>
+          <CardTitle>All Tours ({totalItems} total)</CardTitle>
         </CardHeader>
         <CardContent>
           {loading && items.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-gray-500">Loading accommodations...</div>
+            <div className="flex items-center justify-center h-40 text-gray-500">Loading tours...</div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-12">
-              <Hotel className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No accommodations found</h3>
+              <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No tours found</h3>
               <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredItems.map((a) => (
-                  <div key={a.id} className="border rounded-xl overflow-hidden bg-white shadow hover:shadow-lg transition">
+                {filteredItems.map((t) => (
+                  <div key={t.id} className="border rounded-xl overflow-hidden bg-white shadow hover:shadow-lg transition">
                     <div className="aspect-video bg-muted">
-                      <img src={a.images?.[0] || '/placeholder.svg'} alt={a.name} className="w-full h-full object-cover" />
+                      <img src={t.images?.[0] || '/placeholder.svg'} alt={t.name} className="w-full h-full object-cover" />
                     </div>
                     <div className="p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div>
-                          <div className="text-lg font-semibold">{a.name}</div>
+                          <div className="text-lg font-semibold">{t.name}</div>
                           <div className="text-sm text-gray-500 flex items-center">
-                            <MapPin className="h-3.5 w-3.5 mr-1" /> {a.location?.city}
+                            <MapPin className="h-3.5 w-3.5 mr-1" /> {t.location?.city}
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Badge variant={a.isVerified ? 'default' : 'secondary'}>{a.isVerified ? 'Verified' : 'Unverified'}</Badge>
-                          {a.isAvailable ? <Badge variant="outline">Available</Badge> : <Badge variant="destructive">Unavailable</Badge>}
+                          <Badge variant={t.isVerified ? 'default' : 'secondary'}>{t.isVerified ? 'Verified' : 'Unverified'}</Badge>
+                          {t.isAvailable ? <Badge variant="outline">Available</Badge> : <Badge variant="destructive">Unavailable</Badge>}
                         </div>
                       </div>
-                      <div className="text-sm line-clamp-2 text-gray-600">{a.description}</div>
+                      <div className="text-sm line-clamp-2 text-gray-600">{t.description}</div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
                           <DollarSign className="h-4 w-4 text-green-600 mr-1" />
-                          <span className="font-semibold">{a.currency} {a.pricePerNight?.toLocaleString?.() || a.pricePerNight}</span>
-                          <span className="ml-1 text-xs text-gray-500">/ night</span>
+                          <span className="font-semibold">{t.currency} {t.pricePerPerson?.toLocaleString?.() || t.pricePerPerson}</span>
+                          <span className="ml-1 text-xs text-gray-500">/ person</span>
                         </div>
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button>
                           <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
-                          {!a.isVerified ? (
+                          {!t.isVerified ? (
                             <Button 
                               size="sm" 
                               variant="outline" 
                               className="text-green-600 hover:text-green-700"
-                              onClick={() => handleVerifyAccommodation(a.id, true)}
+                              onClick={() => handleVerifyTour(t.id, true)}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
@@ -482,7 +491,7 @@ const AccommodationsManagement: React.FC = () => {
                               size="sm" 
                               variant="outline" 
                               className="text-red-600 hover:text-red-700"
-                              onClick={() => handleVerifyAccommodation(a.id, false)}
+                              onClick={() => handleVerifyTour(t.id, false)}
                             >
                               <XCircle className="h-4 w-4" />
                             </Button>
@@ -498,7 +507,7 @@ const AccommodationsManagement: React.FC = () => {
               {totalPages > 1 && (
                 <div className="flex justify-between items-center mt-6">
                   <div className="text-sm text-gray-500">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} accommodations
+                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} tours
                   </div>
                   <div className="flex space-x-2">
                     <Button 
@@ -526,12 +535,12 @@ const AccommodationsManagement: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Add New Accommodation Modal */}
+      {/* Add New Tour Modal */}
       <Dialog open={addNewOpen} onOpenChange={setAddNewOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Accommodation</DialogTitle>
-            <DialogDescription>Fill in the details to create a new accommodation.</DialogDescription>
+            <DialogTitle>Add New Tour</DialogTitle>
+            <DialogDescription>Fill in the details to create a new tour.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             {/* Basic Information */}
@@ -542,7 +551,7 @@ const AccommodationsManagement: React.FC = () => {
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Accommodation name"
+                  placeholder="Tour name"
                   required
                 />
               </div>
@@ -552,7 +561,7 @@ const AccommodationsManagement: React.FC = () => {
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Brief description of the accommodation"
+                  placeholder="Brief description of the tour"
                   required
                 />
               </div>
@@ -567,13 +576,12 @@ const AccommodationsManagement: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="HOTEL">Hotel</SelectItem>
-                    <SelectItem value="GUESTHOUSE">Guesthouse</SelectItem>
-                    <SelectItem value="APARTMENT">Apartment</SelectItem>
-                    <SelectItem value="VILLA">Villa</SelectItem>
-                    <SelectItem value="HOSTEL">Hostel</SelectItem>
-                    <SelectItem value="CAMPING">Camping</SelectItem>
-                    <SelectItem value="HOMESTAY">Homestay</SelectItem>
+                    <SelectItem value="CITY_TOUR">City Tour</SelectItem>
+                    <SelectItem value="NATURE_TOUR">Nature Tour</SelectItem>
+                    <SelectItem value="CULTURAL_TOUR">Cultural Tour</SelectItem>
+                    <SelectItem value="ADVENTURE_TOUR">Adventure Tour</SelectItem>
+                    <SelectItem value="FOOD_TOUR">Food Tour</SelectItem>
+                    <SelectItem value="HISTORICAL_TOUR">Historical Tour</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -593,30 +601,55 @@ const AccommodationsManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Location and Address */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Location */}
+            <div>
+              <Label>Location *</Label>
+              <Select value={formData.locationId} onValueChange={(value) => setFormData({ ...formData, locationId: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map(location => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} - {location.city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Duration and Participants */}
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label>Location *</Label>
-                <Select value={formData.locationId} onValueChange={(value) => setFormData({ ...formData, locationId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map(location => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name} - {location.city}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="duration">Duration (hours) *</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  placeholder="4"
+                  required
+                />
               </div>
               <div>
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="maxParticipants">Max Participants *</Label>
                 <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Street address"
+                  id="maxParticipants"
+                  type="number"
+                  value={formData.maxParticipants}
+                  onChange={(e) => setFormData({ ...formData, maxParticipants: e.target.value })}
+                  placeholder="10"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="minParticipants">Min Participants *</Label>
+                <Input
+                  id="minParticipants"
+                  type="number"
+                  value={formData.minParticipants}
+                  onChange={(e) => setFormData({ ...formData, minParticipants: e.target.value })}
+                  placeholder="1"
                   required
                 />
               </div>
@@ -625,12 +658,12 @@ const AccommodationsManagement: React.FC = () => {
             {/* Pricing */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="pricePerNight">Price per Night *</Label>
+                <Label htmlFor="pricePerPerson">Price per Person *</Label>
                 <Input
-                  id="pricePerNight"
+                  id="pricePerPerson"
                   type="number"
-                  value={formData.pricePerNight}
-                  onChange={(e) => setFormData({ ...formData, pricePerNight: e.target.value })}
+                  value={formData.pricePerPerson}
+                  onChange={(e) => setFormData({ ...formData, pricePerPerson: e.target.value })}
                   placeholder="0"
                   required
                 />
@@ -646,49 +679,70 @@ const AccommodationsManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Capacity */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Tour Details */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="maxGuests">Max Guests</Label>
+                <Label htmlFor="meetingPoint">Meeting Point</Label>
                 <Input
-                  id="maxGuests"
-                  type="number"
-                  value={formData.maxGuests}
-                  onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })}
-                  placeholder="2"
+                  id="meetingPoint"
+                  value={formData.meetingPoint}
+                  onChange={(e) => setFormData({ ...formData, meetingPoint: e.target.value })}
+                  placeholder="Central location"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="startTime">Start Time</Label>
+                  <Input
+                    id="startTime"
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="endTime">End Time</Label>
+                  <Input
+                    id="endTime"
+                    type="time"
+                    value={formData.endTime}
+                    onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Itinerary and Inclusions */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="itinerary">Itinerary (comma-separated)</Label>
+                <Input
+                  id="itinerary"
+                  value={formData.itinerary}
+                  onChange={(e) => setFormData({ ...formData, itinerary: e.target.value })}
+                  placeholder="Visit museum, Lunch, City walk"
                 />
               </div>
               <div>
-                <Label htmlFor="bedrooms">Bedrooms</Label>
+                <Label htmlFor="includes">What's Included (comma-separated)</Label>
                 <Input
-                  id="bedrooms"
-                  type="number"
-                  value={formData.bedrooms}
-                  onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
-                  placeholder="1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="bathrooms">Bathrooms</Label>
-                <Input
-                  id="bathrooms"
-                  type="number"
-                  value={formData.bathrooms}
-                  onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
-                  placeholder="1"
+                  id="includes"
+                  value={formData.includes}
+                  onChange={(e) => setFormData({ ...formData, includes: e.target.value })}
+                  placeholder="Guide, Transport, Lunch"
                 />
               </div>
             </div>
 
-            {/* Amenities and Images */}
+            {/* Exclusions and Images */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="amenities">Amenities (comma-separated)</Label>
+                <Label htmlFor="excludes">What's Not Included (comma-separated)</Label>
                 <Input
-                  id="amenities"
-                  value={formData.amenities}
-                  onChange={(e) => setFormData({ ...formData, amenities: e.target.value })}
-                  placeholder="WiFi, Pool, Gym"
+                  id="excludes"
+                  value={formData.excludes}
+                  onChange={(e) => setFormData({ ...formData, excludes: e.target.value })}
+                  placeholder="Personal expenses, Tips"
                 />
               </div>
               <div>
@@ -707,8 +761,8 @@ const AccommodationsManagement: React.FC = () => {
               <Button variant="outline" onClick={() => { setAddNewOpen(false); resetForm(); }}>
                 Cancel
               </Button>
-              <Button onClick={handleCreateAccommodation} disabled={submitting}>
-                {submitting ? 'Creating...' : 'Create Accommodation'}
+              <Button onClick={handleCreateTour} disabled={submitting}>
+                {submitting ? 'Creating...' : 'Create Tour'}
               </Button>
             </div>
           </div>
@@ -718,4 +772,6 @@ const AccommodationsManagement: React.FC = () => {
   );
 };
 
-export default AccommodationsManagement;
+export default ToursManagement;
+
+

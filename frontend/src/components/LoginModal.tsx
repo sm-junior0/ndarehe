@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { authApi } from "@/lib/api";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -25,23 +26,44 @@ const LoginModal = ({ isOpen, onClose, onSuccess }: LoginModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      await login(email, password);
-      toast({
-        title: "Success!",
-        description: "You have been logged in successfully.",
-      });
-      onSuccess?.();
-      onClose();
-    } catch (error) {
+      try {
+      const response = await authApi.login(email, password);
+      
+      if (response.success) {
+        // Store token and update auth context with user data
+        localStorage.setItem("token", response.data.token);
+        login(response.data.token, response.data.user);
+        
+        toast({
+          title: "Login Successful!",
+          description: `Welcome back, ${response.data.user.firstName}!`,
+        });
+        
+        // Redirect based on user role
+        const userRole = response.data.user.role;
+        switch (userRole) {
+          case 'ADMIN':
+            navigate('/admin');
+            break;
+          case 'PROVIDER':
+            navigate('/provider-dashboard');
+            break;
+          case 'USER':
+          default:
+            navigate('/dashboard');
+            break;
+        }
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Invalid email or password. Please try again.",
+        description: error.message || "Invalid email or password. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -101,4 +123,4 @@ const LoginModal = ({ isOpen, onClose, onSuccess }: LoginModalProps) => {
   );
 };
 
-export default LoginModal; 
+export default LoginModal;

@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { protect } from '../middleware/auth';
+import { logActivity } from '../utils/activity';
+import { ActivityType } from '@prisma/client';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -233,6 +235,18 @@ router.post('/', protect, async (req: AuthRequest, res: Response, next: NextFunc
           isConfirmed: true
         }
       });
+
+      // Log activity
+      try {
+        await logActivity({
+          type: ActivityType.PAYMENT_COMPLETED,
+          actorUserId: req.user!.id,
+          targetType: 'PAYMENT',
+          targetId: payment.id,
+          message: `Payment completed • ${payment.amount} ${payment.currency}`,
+          metadata: { bookingId },
+        });
+      } catch {}
     }, 2000);
 
     res.status(201).json({

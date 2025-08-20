@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Bell, Cog, UserCircle2, Hotel, Car, Plane, MapPin, BookOpen, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { userApi } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { toast } from '@/hooks/use-toast';
 
 interface DashboardLayoutProps {
   title: string;
@@ -23,6 +24,7 @@ const navItems = [
 export default function DashboardLayout({ title, children }: DashboardLayoutProps) {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const loadCount = async () => {
@@ -33,6 +35,28 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
     };
     loadCount();
   }, []);
+
+    const handleLogout = async () => {
+    try {
+      await logout();
+      console.log("Logout successful, redirecting..."); 
+
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/", { replace: true });
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Logout Error",
+        description: "Failed to logout properly",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen grid grid-cols-[260px_1fr] grid-rows-[64px_1fr]">
@@ -100,7 +124,7 @@ export default function DashboardLayout({ title, children }: DashboardLayoutProp
               <DropdownMenuItem asChild>
                 <Link to="/dashboard/profile">Profile</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

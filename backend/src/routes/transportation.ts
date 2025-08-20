@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { protect, authorize, optionalAuth } from '../middleware/auth';
 import { validate, transportationSchemas } from '../middleware/validation';
+import { logActivity } from '../utils/activity';
+import { ActivityType } from '@prisma/client';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -398,6 +400,18 @@ router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(transportatio
         }
       }
     });
+
+    // Log activity
+    try {
+      const actorId = (req as any).user?.id as string | undefined;
+      await logActivity({
+        type: ActivityType.TRANSPORTATION_CREATED,
+        actorUserId: actorId || null,
+        targetType: 'TRANSPORTATION',
+        targetId: transportation.id,
+        message: `Transportation added: ${transportation.name}`,
+      });
+    } catch {}
 
     res.status(201).json({
       success: true,

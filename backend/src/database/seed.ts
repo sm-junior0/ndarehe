@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -358,6 +359,378 @@ async function main() {
       description: 'Contact phone number'
     }
   });
+
+  // Add more comprehensive system settings
+  await prisma.systemSetting.upsert({
+    where: { key: 'backend_url' }, update: {}, create: { key: 'backend_url', value: 'http://localhost:5000', description: 'Backend API URL' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'frontend_url' }, update: {}, create: { key: 'frontend_url', value: 'http://localhost:5173', description: 'Frontend URL' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'email_from' }, update: {}, create: { key: 'email_from', value: 'noreply@ndarehe.com', description: 'Default sender email' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'language' }, update: {}, create: { key: 'language', value: 'en', description: 'Default language' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'timezone' }, update: {}, create: { key: 'timezone', value: 'Africa/Kigali', description: 'Default timezone' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'maintenance_mode' }, update: {}, create: { key: 'maintenance_mode', value: 'false', description: 'Maintenance mode status' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'sms_provider_enabled' }, update: {}, create: { key: 'sms_provider_enabled', value: 'false', description: 'SMS provider status' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'email_provider_enabled' }, update: {}, create: { key: 'email_provider_enabled', value: 'true', description: 'Email provider status' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'stripe_public_key' }, update: {}, create: { key: 'stripe_public_key', value: 'pk_test_...', description: 'Stripe public key' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'stripe_secret_key' }, update: {}, create: { key: 'stripe_secret_key', value: 'sk_test_...', description: 'Stripe secret key' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'twilio_sid' }, update: {}, create: { key: 'twilio_sid', value: 'AC...', description: 'Twilio SID' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'twilio_auth_token' }, update: {}, create: { key: 'twilio_auth_token', value: '...', description: 'Twilio auth token' }
+  });
+  await prisma.systemSetting.upsert({
+    where: { key: 'twilio_from' }, update: {}, create: { key: 'twilio_from', value: '+1234567890', description: 'Twilio from number' }
+  });
+
+  // Add sample analytics data for testing
+  console.log('🌐 Adding sample analytics data...');
+  
+  // Create sample users for analytics
+  const sampleUsers: any[] = [];
+  for (let i = 1; i <= 20; i++) {
+    const user = await prisma.user.upsert({
+      where: { email: `sample${i}@example.com` },
+      update: {},
+      create: {
+        firstName: `Sample${i}`,
+        lastName: `User${i}`,
+        email: `sample${i}@example.com`,
+        password: await bcrypt.hash('password123', 10),
+        role: 'USER',
+        isVerified: true,
+        isActive: true,
+        phone: `+25078${String(i).padStart(7, '0')}`,
+        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) // Random date within last 30 days
+      }
+    });
+    sampleUsers.push(user);
+  }
+
+  // Create sample bookings for analytics
+  const serviceTypes = ['ACCOMMODATION', 'TRANSPORTATION', 'TOUR'];
+  const statuses = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
+  const availableLocations = [kigali, musanze, rubavu];
+  
+  for (let i = 1; i <= 50; i++) {
+    const serviceType = serviceTypes[Math.floor(Math.random() * serviceTypes.length)];
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const user = sampleUsers[Math.floor(Math.random() * sampleUsers.length)];
+    const location = availableLocations[Math.floor(Math.random() * availableLocations.length)];
+    
+    let serviceData: any = {};
+    if (serviceType === 'ACCOMMODATION') {
+      const accommodation = await prisma.accommodation.upsert({
+        where: { name: `Sample Accommodation ${i}` },
+        update: {},
+        create: {
+          name: `Sample Accommodation ${i}`,
+          description: `A sample accommodation for testing analytics`,
+          type: 'HOTEL',
+          category: 'STANDARD',
+          pricePerNight: Math.floor(Math.random() * 50000) + 10000,
+          maxGuests: Math.floor(Math.random() * 4) + 1,
+          bedrooms: Math.floor(Math.random() * 3) + 1,
+          bathrooms: Math.floor(Math.random() * 2) + 1,
+          address: `Sample Address ${i}`,
+          locationId: location.id,
+          amenities: ['WiFi', 'Parking', 'Kitchen'],
+          images: [`https://example.com/image${i}.jpg`],
+          isAvailable: true,
+          isVerified: true,
+          isPartner: false,
+          createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        }
+      });
+      serviceData.accommodationId = accommodation.id;
+    } else if (serviceType === 'TRANSPORTATION') {
+      const transportation = await prisma.transportation.upsert({
+        where: { name: `Sample Transportation ${i}` },
+        update: {},
+        create: {
+          name: `Sample Transportation ${i}`,
+          description: `A sample transportation service for testing analytics`,
+          type: 'CITY_TRANSPORT',
+          vehicleType: 'STANDARD',
+          pricePerTrip: Math.floor(Math.random() * 20000) + 5000,
+          capacity: Math.floor(Math.random() * 6) + 1,
+          locationId: location.id,
+          amenities: ['AC', 'Music'],
+          images: [`https://example.com/transport${i}.jpg`],
+          isAvailable: true,
+          isVerified: true,
+          isPartner: false,
+          createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        }
+      });
+      serviceData.transportationId = transportation.id;
+    } else {
+      const tour = await prisma.tour.upsert({
+        where: { name: `Sample Tour ${i}` },
+        update: {},
+        create: {
+          name: `Sample Tour ${i}`,
+          description: `A sample tour for testing analytics`,
+          type: 'CULTURAL_TOUR',
+          category: 'STANDARD',
+          pricePerPerson: Math.floor(Math.random() * 30000) + 15000,
+          duration: Math.floor(Math.random() * 7) + 1,
+          maxParticipants: Math.floor(Math.random() * 20) + 5,
+          minParticipants: 1,
+          locationId: location.id,
+          meetingPoint: `Sample Meeting Point ${i}`,
+          startTime: '09:00',
+          endTime: '17:00',
+          images: [`https://example.com/tour${i}.jpg`],
+          itinerary: ['Visit location 1', 'Lunch break', 'Visit location 2'],
+          includes: ['Guide', 'Transport', 'Lunch'],
+          excludes: ['Personal expenses'],
+          isAvailable: true,
+          isVerified: true,
+          createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+        }
+      });
+      serviceData.tourId = tour.id;
+    }
+
+    const booking = await prisma.booking.create({
+      data: {
+        userId: user.id,
+        serviceType: serviceType as any,
+        status: status as any,
+        startDate: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + (Math.random() * 30 + 1) * 24 * 60 * 60 * 1000),
+        numberOfPeople: Math.floor(Math.random() * 4) + 1,
+        totalAmount: Math.floor(Math.random() * 50000) + 10000,
+        isConfirmed: status === 'CONFIRMED',
+        createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+        ...serviceData
+      }
+    });
+
+    // Create payment for confirmed/completed bookings
+    if (['CONFIRMED', 'COMPLETED'].includes(status)) {
+      await prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          userId: user.id,
+          amount: booking.totalAmount,
+          currency: 'RWF',
+          method: 'CARD',
+          status: 'COMPLETED',
+          transactionId: `txn_${Math.random().toString(36).substr(2, 9)}`,
+          createdAt: new Date(booking.createdAt.getTime() + Math.random() * 24 * 60 * 60 * 1000)
+        }
+      });
+    }
+  }
+
+  console.log('✅ Sample analytics data added successfully');
+
+  // Add sample help data
+  console.log('📚 Adding sample help data...');
+  
+  // Create help categories
+  const generalCategory = await prisma.helpCategory.create({
+    data: {
+      name: 'General',
+      description: 'General help and information',
+      icon: 'help-circle',
+      order: 1
+    }
+  });
+
+  const technicalCategory = await prisma.helpCategory.create({
+    data: {
+      name: 'Technical',
+      description: 'Technical support and troubleshooting',
+      icon: 'wrench',
+      order: 2
+    }
+  });
+
+  const adminCategory = await prisma.helpCategory.create({
+    data: {
+      name: 'Admin Guide',
+      description: 'Administrative tasks and management',
+      icon: 'shield',
+      order: 3
+    }
+  });
+
+  // Create help articles
+  await prisma.helpArticle.create({
+    data: {
+      title: 'Getting Started with Admin Panel',
+      content: `# Getting Started with Admin Panel
+
+Welcome to the NDAREHE Admin Panel! This guide will help you get started with managing your platform.
+
+## Key Features
+
+- **Dashboard**: Overview of platform statistics and recent activity
+- **Bookings**: Manage accommodation, transportation, and tour bookings
+- **Users**: User management and verification
+- **Content**: Manage accommodations, transportation services, and tours
+- **Reports**: Generate comprehensive reports and analytics
+- **Settings**: Configure system settings and integrations
+
+## Quick Actions
+
+1. Use the sidebar navigation to access different sections
+2. Check the Dashboard for platform overview
+3. Use the "Add New" button to create new content
+4. Export data using CSV download buttons
+
+For more detailed information, explore the other help articles in this section.`,
+      categoryId: generalCategory.id,
+      tags: ['getting-started', 'admin', 'overview'],
+      order: 1,
+      isPublished: true,
+      authorId: admin.id
+    }
+  });
+
+  await prisma.helpArticle.create({
+    data: {
+      title: 'Managing Bookings',
+      content: `# Managing Bookings
+
+Learn how to effectively manage bookings in the admin panel.
+
+## Booking Statuses
+
+- **PENDING**: New booking awaiting confirmation
+- **CONFIRMED**: Booking confirmed and active
+- **COMPLETED**: Service has been delivered
+- **CANCELLED**: Booking cancelled by user or admin
+
+## Actions Available
+
+1. **View Details**: Click on any booking to see full information
+2. **Update Status**: Change booking status as needed
+3. **Filter & Search**: Use filters to find specific bookings
+4. **Export Data**: Download booking data in CSV format
+
+## Best Practices
+
+- Respond to pending bookings within 24 hours
+- Update status promptly when changes occur
+- Use filters to organize and manage large numbers of bookings
+- Export data regularly for record keeping`,
+      categoryId: adminCategory.id,
+      tags: ['bookings', 'management', 'status'],
+      order: 2,
+      isPublished: true,
+      authorId: admin.id
+    }
+  });
+
+  await prisma.helpArticle.create({
+    data: {
+      title: 'User Management Guide',
+      content: `# User Management Guide
+
+Comprehensive guide to managing users on the platform.
+
+## User Roles
+
+- **USER**: Regular platform users
+- **ADMIN**: Full administrative access
+- **PROVIDER**: Service providers with limited admin access
+
+## User Verification
+
+1. **Email Verification**: Users must verify their email addresses
+2. **Account Status**: Monitor active/inactive user accounts
+3. **Profile Management**: Help users update their profiles
+
+## Security Features
+
+- Password requirements and validation
+- Account lockout for suspicious activity
+- Role-based access control
+- Activity logging for all user actions
+
+## Support
+
+For user-related issues, check the support tickets section or contact the technical team.`,
+      categoryId: adminCategory.id,
+      tags: ['users', 'management', 'security', 'verification'],
+      order: 3,
+      isPublished: true,
+      authorId: admin.id
+    }
+  });
+
+  await prisma.helpArticle.create({
+    data: {
+      title: 'Troubleshooting Common Issues',
+      content: `# Troubleshooting Common Issues
+
+Solutions to frequently encountered problems.
+
+## Connection Issues
+
+**Problem**: Cannot connect to backend
+**Solution**: 
+1. Check if backend server is running
+2. Verify API base URL in settings
+3. Check CORS configuration
+4. Ensure database is accessible
+
+## Data Not Loading
+
+**Problem**: Pages show no data
+**Solution**:
+1. Check backend connectivity
+2. Verify user authentication
+3. Check database connection
+4. Review error logs
+
+## Performance Issues
+
+**Problem**: Slow loading times
+**Solution**:
+1. Check database query performance
+2. Monitor server resources
+3. Optimize database indexes
+4. Check for rate limiting
+
+## Getting Help
+
+If you continue to experience issues:
+1. Check the system diagnostics
+2. Submit a support ticket
+3. Contact technical support
+4. Review error logs and diagnostics`,
+      categoryId: technicalCategory.id,
+      tags: ['troubleshooting', 'issues', 'support', 'technical'],
+      order: 4,
+      isPublished: true,
+      authorId: admin.id
+    }
+  });
+
+  console.log('✅ Sample help data added successfully');
 
   console.log('✅ Database seeded successfully!');
   console.log('👤 Admin user: admin@ndarehe.com / admin123');

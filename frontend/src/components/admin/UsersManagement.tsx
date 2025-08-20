@@ -21,6 +21,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { adminApi } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: string;
@@ -39,54 +41,110 @@ interface User {
 
 const UsersManagement: React.FC = () => {
   const { token } = useAuth();
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage] = useState(20);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentPage, roleFilter, statusFilter]);
 
   const fetchUsers = async () => {
+    if (!token) return;
+    
+    setLoading(true);
     try {
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const params: any = {
+        page: currentPage,
+        limit: itemsPerPage
+      };
+      
+      if (searchTerm) params.search = searchTerm;
+      if (roleFilter !== 'all') params.role = roleFilter;
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'active') {
+          params.isActive = true;
+          params.isVerified = true;
+        } else if (statusFilter === 'inactive') {
+          params.isActive = false;
+        } else if (statusFilter === 'unverified') {
+          params.isVerified = false;
         }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setUsers(data.data);
+      }
+
+      const response = await adminApi.getUsers(token, params);
+      if (response.data.success) {
+        const data = response.data.data;
+        const list = Array.isArray(data?.users) ? data.users : [];
+        
+        // Map to local shape
+        const shaped: User[] = list.map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          phone: u.phone,
+          role: u.role,
+          isVerified: u.isVerified,
+          isActive: u.isActive,
+          nationality: u.nationality,
+          language: u.language || 'en',
+          createdAt: u.createdAt,
+          lastLogin: u.lastLogin,
+        }));
+        
+        setUsers(shaped);
+        
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages);
+          setTotalItems(data.pagination.totalItems);
+        }
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch users',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const updateUserStatus = async (userId: string, isActive: boolean) => {
+    if (!token) return;
+    
     try {
-      const response = await fetch(`/api/admin/users/${userId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isActive })
-      });
+      const response = await adminApi.updateUserStatus(token, userId, { isActive });
       
-      if (response.ok) {
+      if (response.data.success) {
+        // Update local state
         setUsers(users.map(user => 
           user.id === userId 
             ? { ...user, isActive }
             : user
         ));
+        
+        toast({
+          title: 'Success',
+          description: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+        });
       }
     } catch (error) {
       console.error('Error updating user status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update user status',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -120,42 +178,73 @@ const UsersManagement: React.FC = () => {
       user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'active' && user.isActive && user.isVerified) ||
-      (statusFilter === 'inactive' && !user.isActive) ||
-      (statusFilter === 'unverified' && !user.isVerified);
-    
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch;
   });
 
-  const exportUsers = () => {
-    const csvContent = [
-      ['ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Verified', 'Nationality', 'Language', 'Created Date'],
-      ...filteredUsers.map(user => [
-        user.id,
-        `${user.firstName} ${user.lastName}`,
-        user.email,
-        user.phone || '',
-        user.role,
-        user.isActive ? 'Active' : 'Suspended',
-        user.isVerified ? 'Yes' : 'No',
-        user.nationality || '',
-        user.language,
-        new Date(user.createdAt).toLocaleDateString()
-      ])
-    ].map(row => row.join(',')).join('\n');
+  const exportUsers = async () => {
+    if (!token) return;
+    
+    try {
+      // Fetch all users for export (without pagination)
+      const response = await adminApi.getUsers(token, { limit: 1000 });
+      if (response.data.success) {
+        const allUsers = response.data.data.users || [];
+        
+        const csvContent = [
+          ['ID', 'Name', 'Email', 'Phone', 'Role', 'Status', 'Verified', 'Nationality', 'Language', 'Created Date'],
+          ...allUsers.map((user: any) => [
+            user.id,
+            `${user.firstName} ${user.lastName}`,
+            user.email,
+            user.phone || '',
+            user.role,
+            user.isActive ? 'Active' : 'Suspended',
+            user.isVerified ? 'Yes' : 'No',
+            user.nationality || '',
+            user.language || 'en',
+            new Date(user.createdAt).toLocaleDateString()
+          ])
+        ].map(row => row.join(',')).join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'users-export.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `users-export-${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: 'Success',
+          description: 'Users exported successfully',
+        });
+      }
+    } catch (error) {
+      console.error('Error exporting users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to export users',
+        variant: 'destructive'
+      });
+    }
   };
 
-  if (loading) {
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleFilterChange = () => {
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchUsers();
+  };
+
+  if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">Loading users...</div>
@@ -189,6 +278,7 @@ const UsersManagement: React.FC = () => {
                   placeholder="Search users..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   className="pl-10"
                 />
               </div>
@@ -196,7 +286,7 @@ const UsersManagement: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <Select value={roleFilter} onValueChange={(value) => { setRoleFilter(value); handleFilterChange(); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Roles" />
                 </SelectTrigger>
@@ -211,7 +301,7 @@ const UsersManagement: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); handleFilterChange(); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -224,17 +314,22 @@ const UsersManagement: React.FC = () => {
               </Select>
             </div>
             
-            <div className="flex items-end">
+            <div className="flex items-end space-x-2">
+              <Button onClick={handleSearch}>
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={() => {
                   setSearchTerm('');
                   setRoleFilter('all');
                   setStatusFilter('all');
+                  setCurrentPage(1);
                 }}
               >
                 <Filter className="h-4 w-4 mr-2" />
-                Clear Filters
+                Clear
               </Button>
             </div>
           </div>
@@ -244,7 +339,7 @@ const UsersManagement: React.FC = () => {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Users ({filteredUsers.length})</CardTitle>
+          <CardTitle>All Users ({totalItems} total)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -346,11 +441,39 @@ const UsersManagement: React.FC = () => {
             </table>
           </div>
           
-          {filteredUsers.length === 0 && (
+          {filteredUsers.length === 0 && !loading && (
             <div className="text-center py-12">
               <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
               <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-6">
+              <div className="text-sm text-gray-500">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} users
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage <= 1} 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-3 text-sm text-gray-500">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage >= totalPages} 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

@@ -21,6 +21,8 @@ import {
   DollarSign
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { adminApi } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface Booking {
   id: string;
@@ -40,55 +42,101 @@ interface Booking {
 
 const BookingsManagement: React.FC = () => {
   const { token } = useAuth();
+  const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage] = useState(20);
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [currentPage, statusFilter, serviceTypeFilter]);
 
   const fetchBookings = async () => {
+    if (!token) return;
+    
+    setLoading(true);
     try {
-      const response = await fetch('/api/admin/bookings', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const params: any = {
+        page: currentPage,
+        limit: itemsPerPage
+      };
+      
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (serviceTypeFilter !== 'all') params.serviceType = serviceTypeFilter;
+
+      const response = await adminApi.getBookings(token, params);
+      if (response.data.success) {
+        const data = response.data.data;
+        const list = Array.isArray(data?.bookings) ? data.bookings : [];
+        
+        // Map to local shape
+        const shaped: Booking[] = list.map((b: any) => ({
+          id: b.id,
+          userId: b.userId,
+          guestName: `${b.user?.firstName || ''} ${b.user?.lastName || ''}`.trim() || b.user?.email || 'Guest',
+          serviceType: b.serviceType,
+          serviceName: b.accommodation?.name || b.transportation?.name || b.tour?.name || 'Service',
+          startDate: b.startDate,
+          endDate: b.endDate,
+          numberOfPeople: b.numberOfPeople,
+          totalAmount: b.totalAmount,
+          currency: b.currency,
+          status: b.status,
+          createdAt: b.createdAt,
+          specialRequests: b.specialRequests || '',
+        }));
+        
+        setBookings(shaped);
+        
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages);
+          setTotalItems(data.pagination.totalItems);
         }
-      });
-      const data = await response.json();
-      if (data.success) {
-        setBookings(data.data);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch bookings',
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const updateBookingStatus = async (bookingId: string, newStatus: string) => {
+    if (!token) return;
+    
     try {
-      const response = await fetch(`/api/admin/bookings/${bookingId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
+      const response = await adminApi.updateBookingStatus(token, bookingId, newStatus);
       
-      if (response.ok) {
+      if (response.data.success) {
         // Update local state
         setBookings(bookings.map(booking => 
           booking.id === bookingId 
             ? { ...booking, status: newStatus as any }
             : booking
         ));
+        
+        toast({
+          title: 'Success',
+          description: `Booking status updated to ${newStatus}`,
+        });
       }
     } catch (error) {
       console.error('Error updating booking status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update booking status',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -127,39 +175,69 @@ const BookingsManagement: React.FC = () => {
       booking.serviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
-    const matchesServiceType = serviceTypeFilter === 'all' || booking.serviceType === serviceTypeFilter;
-    
-    return matchesSearch && matchesStatus && matchesServiceType;
+    return matchesSearch;
   });
 
-  const exportBookings = () => {
-    const csvContent = [
-      ['ID', 'Guest Name', 'Service Type', 'Service Name', 'Start Date', 'End Date', 'People', 'Amount', 'Status', 'Created Date'],
-      ...filteredBookings.map(booking => [
-        booking.id,
-        booking.guestName,
-        booking.serviceType,
-        booking.serviceName,
-        booking.startDate,
-        booking.endDate || '',
-        booking.numberOfPeople.toString(),
-        `${booking.totalAmount} ${booking.currency}`,
-        booking.status,
-        booking.createdAt
-      ])
-    ].map(row => row.join(',')).join('\n');
+  const exportBookings = async () => {
+    if (!token) return;
+    
+    try {
+      // Fetch all bookings for export (without pagination)
+      const response = await adminApi.getBookings(token, { limit: 1000 });
+      if (response.data.success) {
+        const allBookings = response.data.data.bookings || [];
+        
+        const csvContent = [
+          ['ID', 'Guest Name', 'Service Type', 'Service Name', 'Start Date', 'End Date', 'People', 'Amount', 'Status', 'Created Date', 'Special Requests'],
+          ...allBookings.map((booking: any) => [
+            booking.id,
+            `${booking.user?.firstName || ''} ${booking.user?.lastName || ''}`.trim() || booking.user?.email || 'Guest',
+            booking.serviceType,
+            booking.accommodation?.name || booking.transportation?.name || booking.tour?.name || 'Service',
+            new Date(booking.startDate).toLocaleDateString(),
+            booking.endDate ? new Date(booking.endDate).toLocaleDateString() : '',
+            booking.numberOfPeople.toString(),
+            `${booking.totalAmount} ${booking.currency}`,
+            booking.status,
+            new Date(booking.createdAt).toLocaleDateString(),
+            booking.specialRequests || ''
+          ])
+        ].map(row => row.join(',')).join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bookings-export.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bookings-export-${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: 'Success',
+          description: 'Bookings exported successfully',
+        });
+      }
+    } catch (error) {
+      console.error('Error exporting bookings:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to export bookings',
+        variant: 'destructive'
+      });
+    }
   };
 
-  if (loading) {
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleFilterChange = () => {
+    setCurrentPage(1); // Reset to first page when filters change
+  };
+
+  if (loading && bookings.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-gray-500">Loading bookings...</div>
@@ -200,7 +278,7 @@ const BookingsManagement: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); handleFilterChange(); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -217,7 +295,7 @@ const BookingsManagement: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Service Type</label>
-              <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
+              <Select value={serviceTypeFilter} onValueChange={(value) => { setServiceTypeFilter(value); handleFilterChange(); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Services" />
                 </SelectTrigger>
@@ -237,6 +315,7 @@ const BookingsManagement: React.FC = () => {
                   setSearchTerm('');
                   setStatusFilter('all');
                   setServiceTypeFilter('all');
+                  setCurrentPage(1);
                 }}
               >
                 <Filter className="h-4 w-4 mr-2" />
@@ -250,7 +329,7 @@ const BookingsManagement: React.FC = () => {
       {/* Bookings Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Bookings ({filteredBookings.length})</CardTitle>
+          <CardTitle>All Bookings ({totalItems} total)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -345,11 +424,39 @@ const BookingsManagement: React.FC = () => {
             </table>
           </div>
           
-          {filteredBookings.length === 0 && (
+          {filteredBookings.length === 0 && !loading && (
             <div className="text-center py-12">
               <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings found</h3>
               <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center mt-6">
+              <div className="text-sm text-gray-500">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} bookings
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage <= 1} 
+                  onClick={() => handlePageChange(currentPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-3 text-sm text-gray-500">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button 
+                  variant="outline" 
+                  disabled={currentPage >= totalPages} 
+                  onClick={() => handlePageChange(currentPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

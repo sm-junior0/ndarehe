@@ -59,6 +59,19 @@ export const userSchemas = {
   })
 };
 
+export const adminSchemas = {
+  createUser: Joi.object({
+    firstName: Joi.string().min(2).max(50).required(),
+    lastName: Joi.string().min(2).max(50).required(),
+    email: Joi.string().email().required(),
+    role: Joi.string().valid('USER', 'ADMIN', 'PROVIDER').required(),
+    password: Joi.string().min(6).optional(),
+    phone: Joi.string().optional(),
+    isVerified: Joi.boolean().optional(),
+    isActive: Joi.boolean().optional(),
+  })
+};
+
 export const accommodationSchemas = {
   create: Joi.object({
     name: Joi.string().min(3).max(100).required(),

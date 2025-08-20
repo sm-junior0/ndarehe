@@ -30,63 +30,21 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS configuration
-const allowedOrigins = process.env.NODE_ENV === 'production' 
-  ? [
-      'https://ndarehe.com', 
-      'https://www.ndarehe.com',
-      'https://ndarehe.vercel.app',
-      'https://ndarehe.vercel.app/',
-      'https://ndarehe-frontend.vercel.app',
-      'https://ndarehe-frontend.vercel.app/',
-      'https://ndarehe.onrender.com',
-      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
-    ]
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'];
-
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Allowed origins:', allowedOrigins);
-
 // Security middleware
 app.use(helmet());
-
-// CORS middleware with explicit options handling
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('Request with no origin - allowing');
-      return callback(null, true);
-    }
-    
-    console.log('Request from origin:', origin);
-    
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
-      console.log('Origin allowed:', origin);
-      callback(null, true);
-    } else {
-      // Additional check for Vercel domains with different subdomains
-      const isVercelDomain = origin.includes('ndarehe.vercel.app') || 
-                             origin.includes('ndarehe.com') ||
-                             origin.includes('ndarehe.onrender.com');
-      
-      if (isVercelDomain) {
-        console.log('Vercel domain allowed:', origin);
-        callback(null, true);
-      } else {
-        console.log('CORS blocked origin:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  origin: process.env.NODE_ENV === 'production' 
+    ? [
+        'https://ndarehe.com', 
+        'https://www.ndarehe.com',
+        'https://ndarehe.vercel.app',
+        'https://ndarehe-frontend.vercel.app',
+        'https://ndarehe.onrender.com',
+        ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+      ]
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
+  credentials: true
 }));
-
-// Handle preflight requests
-app.options('*', cors());
 
 // Rate limiting
 const limiter = rateLimit({
@@ -122,6 +80,9 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Favicon handler to avoid noisy 404s
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -134,6 +95,37 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/trip-plans', tripPlanRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+
+// Legacy/compatibility route: redirect /verify-email to the API endpoint or frontend
+app.get('/verify-email', (req, res) => {
+  const { token, status } = req.query as { token?: string; status?: string };
+
+  // If token is present, forward to API endpoint for verification
+  if (token) {
+    const apiBase = process.env.BACKEND_URL || process.env.API_BASE_URL || '';
+    const target = `${apiBase}/api/auth/verify-email?token=${encodeURIComponent(token)}&redirect=true`;
+    // If BACKEND_URL is not set (same host), just redirect to local path
+    if (!apiBase) {
+      return res.redirect(`/api/auth/verify-email?token=${encodeURIComponent(token)}&redirect=true`);
+    }
+    return res.redirect(target);
+  }
+
+  // If status is present without token, this is likely a redirect meant for the frontend
+  if (status) {
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
+    if (frontendUrl) {
+      return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=${encodeURIComponent(status)}`);
+    }
+    // As a last resort, show a simple message instead of 400
+    return res
+      .status(status === 'success' ? 200 : 400)
+      .send(`Email verification status: ${status}. Please open ${process.env.FRONTEND_URL || 'your frontend app'} to view this page.`);
+  }
+
+  // Neither token nor status provided
+  return res.status(400).send('Missing verification parameters');
+});
 
 // Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
@@ -188,6 +180,17 @@ const startServer = async () => {
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
       console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
+      // Sanitize and display DB host and key URLs for debugging environment mismatches
+      try {
+        const dbUrl = process.env.DATABASE_URL || '';
+        const parsed = dbUrl ? new URL(dbUrl) : null;
+        console.log(`🗄️  DB Host: ${parsed ? parsed.hostname + (parsed.port ? ':' + parsed.port : '') : 'unknown'}`);
+      } catch {
+        console.log('🗄️  DB Host: unknown');
+      }
+      console.log(`🌐 BACKEND_URL: ${process.env.BACKEND_URL || '(not set)'}`);
+      console.log(`🌐 FRONTEND_URL: ${process.env.FRONTEND_URL || '(not set)'}`);
+      console.log(`🌐 BASE_URL: ${process.env.BASE_URL || '(not set)'}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

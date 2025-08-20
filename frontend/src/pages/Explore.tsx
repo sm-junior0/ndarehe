@@ -18,6 +18,7 @@ const Explore = () => {
       id: 1,
       title: "Accommodations",
       description: "Find the perfect place to stay in Rwanda",
+      icon: Hotel,
       href: "/accommodations",
       color: "bg-green-50 text-green-600"
     },

@@ -3,6 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import { protect, requireVerification } from '../middleware/auth';
 import { validate, bookingSchemas } from '../middleware/validation';
 import { sendEmail, emailTemplates } from '../utils/email';
+import { logActivity } from '../utils/activity';
+import { ActivityType } from '@prisma/client';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -305,6 +307,16 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
       }
     });
 
+    // Log activity
+    logActivity({
+      type: ActivityType.BOOKING_CREATED,
+      actorUserId: req.user!.id,
+      targetType: 'BOOKING',
+      targetId: booking.id,
+      message: `Booking created • ${service.name}`,
+      metadata: { serviceType, serviceId },
+    }).catch(() => {});
+
     // Send confirmation email asynchronously (do not block response)
     {
       const serviceName = service.name;
@@ -503,6 +515,16 @@ router.put('/:id/cancel', protect, async (req: AuthRequest, res: Response, next:
         isCancelled: true
       }
     });
+
+    // Log activity
+    logActivity({
+      type: ActivityType.BOOKING_CANCELLED,
+      actorUserId: req.user!.id,
+      targetType: 'BOOKING',
+      targetId: id,
+      message: `Booking cancelled • ${id}`,
+      metadata: { reason },
+    }).catch(() => {});
 
     res.json({
       success: true,

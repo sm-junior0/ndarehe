@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,14 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  User, 
-  Calendar, 
-  CreditCard, 
-  Settings, 
-  LogOut, 
-  Edit, 
-  Save, 
+import {
+  User,
+  Calendar,
+  CreditCard,
+  Settings,
+  LogOut,
+  Edit,
+  Save,
   Star,
   MapPin,
   Clock,
@@ -59,7 +59,8 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  
+  const navigate = useNavigate();
+
   // Profile state
   const [profile, setProfile] = useState<UserProfile>({
     id: "",
@@ -71,7 +72,7 @@ const UserDashboard = () => {
     isEmailVerified: false,
     createdAt: ""
   });
-  
+
   // Form state for editing
   const [editForm, setEditForm] = useState({
     firstName: "",
@@ -180,14 +181,28 @@ const UserDashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
-    });
-  };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      console.log("Logout successful, redirecting..."); 
+
+      localStorage.clear();
+      sessionStorage.clear();
+      navigate("/", { replace: true });
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Logout Error",
+        description: "Failed to logout properly",
+        variant: "destructive",
+      });
+    }
+  };
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       CONFIRMED: { color: "bg-green-100 text-green-800", icon: CheckCircle },
@@ -195,10 +210,10 @@ const UserDashboard = () => {
       CANCELLED: { color: "bg-red-100 text-red-800", icon: XCircle },
       COMPLETED: { color: "bg-green-100 text-green-800", icon: CheckCircle }
     };
-    
+
     const config = statusConfig[status as keyof typeof statusConfig];
     const Icon = config.icon;
-    
+
     return (
       <Badge className={`${config.color} flex items-center gap-1`}>
         <Icon className="h-3 w-3" />
@@ -243,7 +258,7 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
           </Link>
-          
+
           <Link to="/dashboard/transportation">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
@@ -257,7 +272,7 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
           </Link>
-          
+
           <Link to="/dashboard/tours">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
@@ -271,7 +286,7 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
           </Link>
-          
+
           <Link to="/dashboard/my-bookings">
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
@@ -342,7 +357,7 @@ const UserDashboard = () => {
                     <Input
                       id="firstName"
                       value={editForm.firstName}
-                      onChange={(e) => setEditForm({...editForm, firstName: e.target.value})}
+                      onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
                       disabled={!isEditing}
                     />
                   </div>
@@ -351,7 +366,7 @@ const UserDashboard = () => {
                     <Input
                       id="lastName"
                       value={editForm.lastName}
-                      onChange={(e) => setEditForm({...editForm, lastName: e.target.value})}
+                      onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
                       disabled={!isEditing}
                     />
                   </div>
@@ -369,7 +384,7 @@ const UserDashboard = () => {
                     <Input
                       id="phone"
                       value={editForm.phone}
-                      onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
                       disabled={!isEditing}
                       placeholder="+250 788 123 456"
                     />
@@ -380,7 +395,7 @@ const UserDashboard = () => {
                       id="dateOfBirth"
                       type="date"
                       value={editForm.dateOfBirth}
-                      onChange={(e) => setEditForm({...editForm, dateOfBirth: e.target.value})}
+                      onChange={(e) => setEditForm({ ...editForm, dateOfBirth: e.target.value })}
                       disabled={!isEditing}
                     />
                   </div>
@@ -439,7 +454,7 @@ const UserDashboard = () => {
                   </div>
                   <Button variant="outline">Change</Button>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-semibold">Email Notifications</h4>
@@ -447,7 +462,7 @@ const UserDashboard = () => {
                   </div>
                   <Button variant="outline">Manage</Button>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-semibold text-red-600">Delete Account</h4>

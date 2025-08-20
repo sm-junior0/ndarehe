@@ -34,6 +34,10 @@ model User {
   tripPlans     TripPlan[]
   payments      Payment[]
   notifications Notification[]
+  activities    Activity[]    // Activities performed by this user
+  submittedTickets SupportTicket[] @relation("SubmittedTickets")
+  assignedTickets SupportTicket[] @relation("AssignedTickets")
+  authoredArticles HelpArticle[]
 
   @@map("users")
 }
@@ -422,13 +426,136 @@ enum NotificationType {
 
 // System Settings
 model SystemSetting {
-  id              String   @id @default(cuid())
-  key             String   @unique
-  value           String
-  description     String?
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("system_settings")
-} 
+}
+
+// Help and Support System
+model HelpCategory {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String?
+  icon        String?
+  order       Int           @default(0)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  articles    HelpArticle[]
+
+  @@map("help_categories")
+}
+
+model HelpArticle {
+  id          String       @id @default(cuid())
+  title       String
+  content     String
+  tags        String[]     // Array of tags
+  order       Int          @default(0)
+  isPublished Boolean      @default(true)
+  viewCount   Int          @default(0)
+  authorId    String
+  categoryId  String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  category        HelpCategory    @relation(fields: [categoryId], references: [id])
+  author          User            @relation(fields: [authorId], references: [id])
+
+  @@map("help_articles")
+}
+
+model SupportTicket {
+  id          String           @id @default(cuid())
+  subject     String
+  description String
+  priority    TicketPriority   @default(MEDIUM)
+  category    TicketCategory   @default(GENERAL)
+  status      TicketStatus     @default(OPEN)
+  submittedBy String
+  assignedTo  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  submittedByUser User? @relation("SubmittedTickets", fields: [submittedBy], references: [id])
+  assignedToUser  User? @relation("AssignedTickets", fields: [assignedTo], references: [id])
+
+  @@map("support_tickets")
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  GENERAL
+  TECHNICAL
+  BILLING
+  FEATURE_REQUEST
+  BUG_REPORT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+// Activity logging for admin dashboard
+enum ActivityType {
+  USER_REGISTERED
+  USER_LOGGED_IN
+  USER_LOGGED_OUT
+  ADMIN_LOGIN
+  ADMIN_LOGOUT
+  BOOKING_CREATED
+  BOOKING_CANCELLED
+  BOOKING_UPDATED
+  USER_STATUS_UPDATED
+  ACCOMMODATION_CREATED
+  ACCOMMODATION_UPDATED
+  TRANSPORTATION_CREATED
+  TRANSPORTATION_UPDATED
+  TOUR_CREATED
+  TOUR_UPDATED
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+  TRIP_PLAN_CREATED
+  TRIP_PLAN_COMPLETED
+  SYSTEM_SETTING_UPDATED
+  HELP_ARTICLE_VIEWED
+  HELP_ARTICLE_CREATED
+  HELP_ARTICLE_UPDATED
+  HELP_ARTICLE_DELETED
+  HELP_CATEGORY_CREATED
+  SUPPORT_TICKET_CREATED
+}
+
+model Activity {
+  id           String        @id @default(cuid())
+  type         ActivityType
+  actorUserId  String?
+  actorUser    User?         @relation(fields: [actorUserId], references: [id])
+  targetType   String?
+  targetId     String?
+  message      String
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+
+  @@index([createdAt])
+  @@map("activity")
+}
