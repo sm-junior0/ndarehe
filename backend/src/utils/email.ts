@@ -37,9 +37,10 @@ export const emailTemplates = {
   // In your emailTemplates utility, update the welcome function:
   welcome: (firstName: string, verificationToken: string) => {
     const subject = 'Welcome to NDAREHE - Verify Your Email';
-    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
-    // Use the correct API endpoint path
-    const verificationUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}&redirect=true`;
+
+    // Use the direct backend URL (not API endpoint)
+    const backendUrl = process.env.BACKEND_URL || 'https://ndarehe.onrender.com';
+    const verificationUrl = `${backendUrl}/verify-email?token=${verificationToken}`;
 
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

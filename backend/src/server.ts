@@ -6,6 +6,8 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 import { specs } from './config/swagger';
 
 import { errorHandler } from './middleware/errorHandler';
@@ -29,6 +31,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const prisma = new PrismaClient();
 
 // Security middleware
 app.use(helmet());
@@ -148,35 +151,56 @@ app.use('/api/trip-plans', tripPlanRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Legacy/compatibility route: redirect /verify-email to the API endpoint or frontend
-app.get('/verify-email', (req, res) => {
+// Email verification route - FIXED VERSION
+app.get('/verify-email', async (req, res) => {
   const { token, status } = req.query as { token?: string; status?: string };
 
-  // If token is present, forward to API endpoint for verification
+  console.log('Verify-email route called with:', { token, status });
+
+  // If token is present, handle the verification directly
   if (token) {
-    const apiBase = process.env.BACKEND_URL || process.env.API_BASE_URL || '';
-    const target = `${apiBase}/api/auth/verify-email?token=${encodeURIComponent(token)}&redirect=true`;
-    // If BACKEND_URL is not set (same host), just redirect to local path
-    if (!apiBase) {
-      return res.redirect(`/api/auth/verify-email?token=${encodeURIComponent(token)}&redirect=true`);
+    try {
+      // Verify token directly
+      const decoded = jwt.verify(token as string, process.env.JWT_SECRET!) as { userId: string };
+      
+      // Update user verification status
+      const user = await prisma.user.update({
+        where: { id: decoded.userId },
+        data: { isVerified: true }
+      });
+
+      console.log('Email verified successfully for user:', user.email);
+
+      // Redirect to frontend with success status
+      const frontendUrl = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
+      
+      return res.redirect(`${frontendUrl}/verify-email?status=success`);
+    } catch (error) {
+      console.error('Email verification failed:', error);
+      
+      const frontendUrl = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
+      
+      if (error instanceof jwt.JsonWebTokenError) {
+        return res.redirect(`${frontendUrl}/verify-email?status=error&message=Invalid or expired verification token`);
+      }
+      
+      return res.redirect(`${frontendUrl}/verify-email?status=error&message=Verification failed`);
     }
-    return res.redirect(target);
   }
 
-  // If status is present without token, this is likely a redirect meant for the frontend
+  // If status is present without token, redirect to frontend
   if (status) {
-    const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : undefined);
-    if (frontendUrl) {
-      return res.redirect(`${frontendUrl.replace(/\/$/, '')}/verify-email?status=${encodeURIComponent(status)}`);
-    }
-    // As a last resort, show a simple message instead of 400
-    return res
-      .status(status === 'success' ? 200 : 400)
-      .send(`Email verification status: ${status}. Please open ${process.env.FRONTEND_URL || 'your frontend app'} to view this page.`);
+    const frontendUrl = process.env.FRONTEND_URL || 
+      (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
+    
+    return res.redirect(`${frontendUrl}/verify-email?status=${encodeURIComponent(status)}`);
   }
 
   // Neither token nor status provided
-  return res.status(400).send('Missing verification parameters');
+  console.error('Missing verification parameters');
+  return res.status(400).send('Missing verification parameters. Please provide a token or status.');
 });
 
 // Swagger documentation
