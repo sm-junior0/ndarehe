@@ -310,7 +310,7 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
 // @access  Public
 router.get('/verify-email', async (req, res, next) => {
   try {
-    const { token } = req.query; // Extract token from URL (?token=...)
+    const { token , redirect } = req.query; // Extract token from URL (?token=...)
 
     if (!token) {
       return res.status(400).json({
@@ -328,6 +328,12 @@ router.get('/verify-email', async (req, res, next) => {
       data: { isVerified: true }
     });
 
+    if (redirect === 'true') {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}/verify-email?status=success`);
+    }
+
+
     // Send success response (or redirect to frontend)
     res.json({
       success: true,
@@ -335,6 +341,12 @@ router.get('/verify-email', async (req, res, next) => {
     });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
+      // Handle redirect for invalid token
+      if (req.query.redirect === 'true') {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/verify-email?status=error&message=Invalid or expired verification token`);
+      }
+      
       return res.status(400).json({
         success: false,
         error: 'Invalid or expired verification token'
@@ -343,6 +355,67 @@ router.get('/verify-email', async (req, res, next) => {
     next(error);
   }
 });
+
+
+// @desc    Resend verification email
+// @route   POST /api/auth/resend-verification
+// @access  Private
+router.post('/resend-verification', protect, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { email } = req.body;
+    const userId = req.user!.id;
+
+    // Get user - either by provided email or authenticated user ID
+    let user;
+    
+    if (email) {
+      user = await prisma.user.findUnique({
+        where: { email }
+      });
+    } else {
+      user = await prisma.user.findUnique({
+        where: { id: userId }
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is already verified'
+      });
+    }
+
+    // Generate new verification token
+    const verificationToken = generateEmailVerificationToken(user.id);
+
+    // Send verification email
+    try {
+      const { subject, html } = emailTemplates.welcome(user.firstName, verificationToken);
+      await sendEmail(user.email, subject, html);
+      
+      res.json({
+        success: true,
+        message: 'Verification email sent successfully'
+      });
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send verification email'
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 // @desc    Forgot password
 // @route   POST /api/auth/forgot-password
@@ -381,6 +454,8 @@ router.post('/forgot-password', validate(authSchemas.forgotPassword), async (req
     next(error);
   }
 });
+
+
 
 // @desc    Reset password
 // @route   POST /api/auth/reset-password

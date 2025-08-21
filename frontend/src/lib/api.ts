@@ -102,12 +102,27 @@ export const authApi = {
     });
   },
 
-  resendVerification: async (email: string) => {
+  resendVerification: async (email?: string) => {
+    // If email is not provided, get it from the current user
+    let targetEmail = email;
+
+    if (!targetEmail) {
+      try {
+        const userResponse = await authApi.getCurrentUser();
+        if (userResponse.success && userResponse.data.user) {
+          targetEmail = userResponse.data.user.email;
+        }
+      } catch (error) {
+        console.error('Failed to get current user email:', error);
+      }
+    }
+
     return apiRequest<ApiResponse<any>>('/auth/resend-verification', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: targetEmail }),
     });
   },
+
   // Get current authenticated user
   getCurrentUser: async () => {
     return apiRequest<ApiResponse<{ user: any }>>('/auth/me');
@@ -372,7 +387,7 @@ export const reviewsApi = {
   },
 };
 
-export { ApiError }; 
+export { ApiError };
 
 // Admin API calls
 export const adminApi = {
@@ -386,7 +401,7 @@ export const adminApi = {
     const qs = searchParams.toString();
     return apiRequest<ApiResponse<{ activity: any[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>>(`/admin/activity${qs ? `?${qs}` : ''}`);
   },
-  createUser: async (payload: { firstName: string; lastName: string; email: string; role: 'USER'|'ADMIN'|'PROVIDER'; password?: string; phone?: string; isVerified?: boolean; isActive?: boolean; }) => {
+  createUser: async (payload: { firstName: string; lastName: string; email: string; role: 'USER' | 'ADMIN' | 'PROVIDER'; password?: string; phone?: string; isVerified?: boolean; isActive?: boolean; }) => {
     return apiRequest<ApiResponse<{ user: any }>>('/admin/users', {
       method: 'POST',
       body: JSON.stringify(payload),

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ArrowLeft, Mail } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { authApi } from "@/lib/api";
@@ -11,24 +11,42 @@ import { useAuth } from "@/hooks/useAuth";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState("");
+  const [resending, setResending] = useState(false);
   const { toast } = useToast();
-  const { updateUserVerification, refreshUser } = useAuth(); 
+  const { updateUserVerification, refreshUser, user } = useAuth(); 
   const hasVerified = useRef(false);
 
   useEffect(() => {
     const verifyEmail = async () => {
-      // Prevent multiple verification attempts
-      if (hasVerified.current) {
+      // Check if we have a status parameter (from redirect)
+      const status = searchParams.get('status');
+      const message = searchParams.get('message');
+      
+      if (status === 'success') {
+        setVerificationStatus('success');
+        updateUserVerification(true);
+        refreshUser();
+        return;
+      } else if (status === 'error') {
+        setVerificationStatus('error');
+        setErrorMessage(message || 'Verification failed');
         return;
       }
 
+      // If no status parameter, proceed with token verification
       const token = searchParams.get('token');
       
       if (!token) {
         setVerificationStatus('error');
         setErrorMessage('No verification token found in the URL');
+        return;
+      }
+
+      // Prevent multiple verification attempts
+      if (hasVerified.current) {
         return;
       }
 
@@ -80,7 +98,40 @@ const VerifyEmail = () => {
     };
 
     verifyEmail();
-  }, [searchParams]);
+  }, [searchParams, toast, updateUserVerification, refreshUser]);
+
+const handleResendVerification = async () => {
+  setResending(true);
+  try {
+    // Option 1: Pass the current user's email if available
+    const userEmail = user?.email;
+    const response = await authApi.resendVerification(userEmail);
+    
+    // Option 2: Call without parameters (backend will use authenticated user)
+    // const response = await authApi.resendVerification();
+    
+    if (response.success) {
+      toast({
+        title: "Verification Email Sent",
+        description: "Please check your email for the verification link.",
+      });
+    } else {
+      toast({
+        title: "Failed to Resend",
+        description: response.message || "Failed to resend verification email. Please try again.",
+        variant: "destructive",
+      });
+    }
+  } catch (error: any) {
+    toast({
+      title: "Failed to Resend",
+      description: error.message || "Failed to resend verification email. Please try again.",
+      variant: "destructive",
+    });
+  } finally {
+    setResending(false);
+  }
+};
 
   const renderContent = () => {
     switch (verificationStatus) {
@@ -118,7 +169,30 @@ const VerifyEmail = () => {
             <XCircle className="h-12 w-12 text-red-600 mx-auto" />
             <h2 className="text-2xl font-bold text-red-600">Verification Failed</h2>
             <p className="text-muted-foreground">{errorMessage}</p>
-            <div className="space-y-2">
+            
+            {!user?.isVerified && (
+              <div className="pt-4">
+                <Button 
+                  onClick={handleResendVerification} 
+                  disabled={resending}
+                  className="w-full"
+                >
+                  {resending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4 mr-2" />
+                      Resend Verification Email
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            
+            <div className="space-y-2 pt-4">
               <Button asChild className="w-full">
                 <Link to="/login">Go to Login</Link>
               </Button>
@@ -165,4 +239,4 @@ const VerifyEmail = () => {
   );
 };
 
-export default VerifyEmail; 
+export default VerifyEmail;
