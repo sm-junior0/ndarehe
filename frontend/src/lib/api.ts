@@ -95,12 +95,9 @@ export const authApi = {
     }
   },
 
-  verifyEmail: async (token: string) => {
-    return apiRequest<ApiResponse<any>>('/auth/verify-email', {
-      method: 'POST',
-      body: JSON.stringify({ token }),
-    });
-  },
+ verifyEmail: async (token: string) => {
+  return apiRequest<ApiResponse<any>>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+},
 
   resendVerification: async (email?: string) => {
     // If email is not provided, get it from the current user

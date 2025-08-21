@@ -306,13 +306,19 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
 });
 
 // @desc    Verify email
-// @route   POST /api/auth/verify-email
+// @route   GET /api/auth/verify-email
 // @access  Public
 router.get('/verify-email', async (req, res, next) => {
   try {
-    const { token , redirect } = req.query; // Extract token from URL (?token=...)
+    const { token, redirect } = req.query;
 
     if (!token) {
+      // If redirect is requested, redirect to frontend with error status
+      if (redirect === 'true') {
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        return res.redirect(`${frontendUrl}/verify-email?status=error&message=Verification token is required`);
+      }
+      
       return res.status(400).json({
         success: false,
         error: 'Verification token is required'
@@ -328,13 +334,13 @@ router.get('/verify-email', async (req, res, next) => {
       data: { isVerified: true }
     });
 
+    // If redirect is requested, redirect to frontend with success status
     if (redirect === 'true') {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       return res.redirect(`${frontendUrl}/verify-email?status=success`);
     }
 
-
-    // Send success response (or redirect to frontend)
+    // Send success response (for API calls)
     res.json({
       success: true,
       message: 'Email verified successfully'

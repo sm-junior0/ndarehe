@@ -21,7 +21,7 @@ export const sendEmail = async (
   html: string
 ): Promise<void> => {
   const transporter = createTransporter();
-  
+
   const mailOptions = {
     from: process.env.EMAIL_FROM || 'NDAREHE <noreply@ndarehe.com>',
     to,
@@ -34,21 +34,25 @@ export const sendEmail = async (
 
 // Email templates
 export const emailTemplates = {
+  // In your emailTemplates utility, update the welcome function:
   welcome: (firstName: string, verificationToken: string) => {
     const subject = 'Welcome to NDAREHE - Verify Your Email';
     const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
+    // Use the correct API endpoint path
+    const verificationUrl = `${process.env.BACKEND_URL || 'http://localhost:5000'}/verify-email?token=${verificationToken}&redirect=true`;
+
     const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Welcome to NDAREHE, ${firstName}!</h2>
-        <p>Thank you for joining our platform. Please verify your email address to get started.</p>
-        <a href="${baseUrl}/verify-email?token=${verificationToken}"
-           style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
-          Verify Email
-        </a>
-        <p>If the button doesn't work, copy and paste this link into your browser:</p>
-        <p>${baseUrl}/verify-email?token=${verificationToken}</p>
-      </div>
-    `;
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Welcome to NDAREHE, ${firstName}!</h2>
+      <p>Thank you for joining our platform. Please verify your email address to get started.</p>
+      <a href="${verificationUrl}"
+         style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
+        Verify Email
+      </a>
+      <p>If the button doesn't work, copy and paste this link into your browser:</p>
+      <p>${verificationUrl}</p>
+    </div>
+  `;
     return { subject, html };
   },
 

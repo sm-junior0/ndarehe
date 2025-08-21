@@ -29,6 +29,10 @@ const VerifyEmail = () => {
         setVerificationStatus('success');
         updateUserVerification(true);
         refreshUser();
+        toast({
+          title: "Email Verified!",
+          description: "Your email has been verified successfully.",
+        });
         return;
       } else if (status === 'error') {
         setVerificationStatus('error');
@@ -100,38 +104,33 @@ const VerifyEmail = () => {
     verifyEmail();
   }, [searchParams, toast, updateUserVerification, refreshUser]);
 
-const handleResendVerification = async () => {
-  setResending(true);
-  try {
-    // Option 1: Pass the current user's email if available
-    const userEmail = user?.email;
-    const response = await authApi.resendVerification(userEmail);
-    
-    // Option 2: Call without parameters (backend will use authenticated user)
-    // const response = await authApi.resendVerification();
-    
-    if (response.success) {
-      toast({
-        title: "Verification Email Sent",
-        description: "Please check your email for the verification link.",
-      });
-    } else {
+  const handleResendVerification = async () => {
+    setResending(true);
+    try {
+      const response = await authApi.resendVerification();
+      
+      if (response.success) {
+        toast({
+          title: "Verification Email Sent",
+          description: "Please check your email for the verification link.",
+        });
+      } else {
+        toast({
+          title: "Failed to Resend",
+          description: response.message || "Failed to resend verification email. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
       toast({
         title: "Failed to Resend",
-        description: response.message || "Failed to resend verification email. Please try again.",
+        description: error.message || "Failed to resend verification email. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setResending(false);
     }
-  } catch (error: any) {
-    toast({
-      title: "Failed to Resend",
-      description: error.message || "Failed to resend verification email. Please try again.",
-      variant: "destructive",
-    });
-  } finally {
-    setResending(false);
-  }
-};
+  };
 
   const renderContent = () => {
     switch (verificationStatus) {
