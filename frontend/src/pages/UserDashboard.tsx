@@ -116,11 +116,6 @@ const UserDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load profile",
-        variant: "destructive",
-      });
     }
   };
 
