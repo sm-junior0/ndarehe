@@ -118,7 +118,7 @@ const About = () => {
               </p>
             </div>
 
-            <div className="prose prose-lg mx-auto text-muted-foreground">
+            <div className="prose prose-lg mx-auto text-muted-foreground gap-y-3">
               <p>
                 NDAREHE was founded in 2022, in the wake of the coronavirus pandemic that had severely impacted the global economy. As the world began to recover, we stayed true to our belief that travel should remain affordable, accessible, and memorable.
               </p>
