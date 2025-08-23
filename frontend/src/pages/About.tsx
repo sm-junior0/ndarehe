@@ -118,18 +118,18 @@ const About = () => {
               </p>
             </div>
 
-            <div className="prose prose-lg mx-auto text-muted-foreground gap-y-3">
+            <div className="prose prose-lg mx-auto text-muted-foreground grid gap-6">
               <p>
-                NDAREHE was founded in 2022, in the wake of the coronavirus pandemic that had severely impacted the global economy. As the world began to recover, we stayed true to our belief that travel should remain affordable, accessible, and memorable.
+                <span className="font-semibold">NDAREHE</span> was founded in 2022, in the wake of the coronavirus pandemic that had severely impacted the global economy. As the world began to recover, we stayed true to our belief that travel should remain affordable, accessible, and memorable.
               </p>
               <p>
-                Born from a simple vision, that every traveller deserves to experience the authentic beauty of Rwanda, regardless of budget or travel style. NDAREHE takes its name from the Kinyarwanda word meaning “where to stay.” This reflects our core mission: Promoting local tourism and helping both local and international visitors find their perfect home away from home.
+                Born from a simple vision, that every traveller deserves to experience the authentic beauty of Rwanda, regardless of budget or travel style. <span className="font-semibold">NDAREHE</span> takes its name from the Kinyarwanda word meaning <span className="font-semibold">“where to stay.”</span> This reflects our core mission: Promoting local tourism and helping both local and international visitors find their perfect home away from home.
               </p>
               <p>
                 Through strategic investment in technology, we specialize in connecting travellers with verified accommodations, reliable transportation, and unforgettable local experiences across Rwanda. From the vibrant streets of Kigali to the tranquil shores of Lake Kivu, and from budget-friendly guesthouses to luxury hotels, we make every journey meaningful and memorable.
               </p>
               <p>
-                More than just a booking platform, NDAREHE is a bridge between cultures, a supporter of local businesses and communities, and a gateway to discovering the Land of a Thousand Hills in all its richness. Wherever you want to go and whatever you plan to do, NDAREHE is here to make it simple, seamless, and supported by 24/7 customer care.
+                More than just a booking platform, <span className="font-semibold">NDAREHE</span> is a bridge between cultures, a supporter of local businesses and communities, and a gateway to discovering the Land of a Thousand Hills in all its richness. Wherever you want to go and whatever you plan to do, NDAREHE is here to make it simple, seamless, and supported by 24/7 customer care.
               </p>
             </div>
           </div>
