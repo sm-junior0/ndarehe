@@ -86,7 +86,7 @@ const About = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       {/* Hero Section */}
       <section className="relative py-24 bg-gradient-to-br from-green-600/90 to-green-800/90 text-white">
         <div className="absolute inset-0 bg-[url('/src/rwanda_main.jpg')] bg-cover bg-center opacity-20"></div>
@@ -117,26 +117,19 @@ const About = () => {
                 To make Rwanda's beauty, culture, and hospitality accessible to every traveler
               </p>
             </div>
-            
+
             <div className="prose prose-lg mx-auto text-muted-foreground">
               <p>
-                NDAREHE was born from a simple belief: that every traveler deserves to experience 
-                the authentic beauty of Rwanda, regardless of their budget or travel style. Our name, 
-                derived from Kinyarwanda meaning "where to stay," reflects our core mission of 
-                helping visitors find their perfect home away from home.
+                NDAREHE was founded in 2022, in the wake of the coronavirus pandemic that had severely impacted the global economy. As the world began to recover, we stayed true to our belief that travel should remain affordable, accessible, and memorable.
               </p>
-              
               <p>
-                We specialize in connecting travelers with verified accommodations, reliable 
-                transportation, and unforgettable local experiences across Rwanda. From the 
-                bustling streets of Kigali to the serene shores of Lake Kivu, from budget-friendly 
-                guesthouses to luxury hotels, we ensure every journey is memorable and meaningful.
+                Born from a simple vision, that every traveller deserves to experience the authentic beauty of Rwanda, regardless of budget or travel style. NDAREHE takes its name from the Kinyarwanda word meaning “where to stay.” This reflects our core mission: Promoting local tourism and helping both local and international visitors find their perfect home away from home.
               </p>
-              
               <p>
-                Our platform is more than just a booking service – it's a bridge between cultures, 
-                a supporter of local communities, and a gateway to discovering the Land of a 
-                Thousand Hills in all its glory.
+                Through strategic investment in technology, we specialize in connecting travellers with verified accommodations, reliable transportation, and unforgettable local experiences across Rwanda. From the vibrant streets of Kigali to the tranquil shores of Lake Kivu, and from budget-friendly guesthouses to luxury hotels, we make every journey meaningful and memorable.
+              </p>
+              <p>
+                More than just a booking platform, NDAREHE is a bridge between cultures, a supporter of local businesses and communities, and a gateway to discovering the Land of a Thousand Hills in all its richness. Wherever you want to go and whatever you plan to do, NDAREHE is here to make it simple, seamless, and supported by 24/7 customer care.
               </p>
             </div>
           </div>
@@ -152,7 +145,7 @@ const About = () => {
               The principles that guide everything we do
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {values.map((value, index) => (
               <Card key={index} className="text-center">
@@ -178,7 +171,7 @@ const About = () => {
               The passionate people behind NDAREHE
             </p>
           </div>
-          
+
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-center">
               {team.map((member, index) => (
@@ -235,7 +228,7 @@ const About = () => {
           </p>
           <div className="space-y-4 sm:space-y-0 sm:space-x-4 sm:flex sm:justify-center">
             <Button asChild size="lg">
-                              <a href="/accommodations">Start Your Journey</a>
+              <a href="/accommodations">Start Your Journey</a>
             </Button>
             <Button asChild size="lg" variant="outline">
               <a href="/contact">Contact Us</a>
