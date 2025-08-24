@@ -238,21 +238,22 @@ router.post('/register', validate(authSchemas.register), async (req, res, next) 
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
 router.post('/login', validate(authSchemas.login), async (req, res, next) => {
   try {
+    const startTime = Date.now();
+    console.time('Total login time');
+    
     const { email, password } = req.body;
 
     // Set timeout for the entire login operation
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Login timeout')), 5000)
+      setTimeout(() => reject(new Error('Login timeout')), 15000)
     );
 
     // Use Promise.race with the actual login logic
     await Promise.race([
       (async () => {
+        console.time('Database query');
         // Single optimized query with only needed fields
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase().trim() },
@@ -267,33 +268,37 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
             isActive: true
           }
         });
+        console.timeEnd('Database query');
 
         if (!user || !user.isActive) {
-          res.status(401).json({ // Remove 'return'
+          res.status(401).json({
             success: false,
             error: 'Invalid credentials'
           });
-          return; // Add explicit return instead
+          return;
         }
 
-
+        console.time('Password verification');
         // Use the optimized password verification
         const isPasswordValid = await verifyPassword(password, user.password);
+        console.timeEnd('Password verification');
 
         if (!isPasswordValid) {
-          res.status(401).json({ // Remove 'return'
+          res.status(401).json({
             success: false,
             error: 'Invalid credentials'
           });
-          return; // Add explicit return instead
+          return;
         }
 
+        console.time('Token generation');
         // Generate token
         const token = generateToken({
           id: user.id,
           email: user.email,
           role: user.role
         });
+        console.timeEnd('Token generation');
 
         // Response
         res.json({
@@ -312,6 +317,10 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
           }
         });
 
+        // Complete the total timing
+        console.timeEnd('Total login time');
+        console.log(`Total login processing: ${Date.now() - startTime}ms`);
+
         // Non-blocking activity logging
         logActivity({
           type: ActivityType.USER_LOGGED_IN,
@@ -325,6 +334,9 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
     ]);
 
   } catch (error) {
+    // Make sure to end the timer even on error
+    console.timeEnd('Total login time');
+    
     if (typeof error === 'object' && error !== null && 'message' in error && (error as any).message === 'Login timeout') {
       return res.status(408).json({
         success: false,
@@ -334,6 +346,7 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
     next(error);
   }
 });
+
 
 // @desc    Verify email
 // @route   GET /api/auth/verify-email
