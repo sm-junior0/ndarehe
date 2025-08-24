@@ -32,8 +32,7 @@ interface Accommodation {
   website: string;
   address: string;
   averageRating: number;
-  // New optional fields to support richer hotel info without breaking existing data
-  contactNumbers?: string[]; // alternative to single phone
+  contactNumbers?: string[];
   roomTypes?: Array<{
     id?: string;
     name: string;
@@ -81,6 +80,69 @@ interface Accommodation {
   }>;
 }
 
+// Distance Information Component
+interface DistanceInfoProps {
+  accommodationName: string;
+  location: string;
+}
+
+const DistanceInfo = ({ accommodationName, location }: DistanceInfoProps) => {
+  const getDistances = () => {
+    const distances: Record<string, { km: number; time: string }> = {
+      "Highlands Suites Hotel": { km: 12.5, time: "20-25 min" },
+      "Ndaru Luxury Suites by Le Muguet": { km: 13.2, time: "25-30 min" },
+      "Lexor Apartments": { km: 11.8, time: "20-25 min" },
+      "Oasis Park": { km: 10.5, time: "18-22 min" },
+      "Madras Hotel and Apartments": { km: 9.8, time: "15-20 min" },
+      "Grazia Apartment Hotel": { km: 12.1, time: "20-25 min" },
+      "Great Seasons Hotel": { km: 11.3, time: "18-23 min" },
+      "Vista Luxury Apartment": { km: 11.5, time: "19-24 min" }
+    };
+    
+    return distances[accommodationName] || { km: 12, time: "20-25 min" };
+  };
+
+  const distanceToAirport = getDistances();
+  const distanceToCityCenter = Math.round(distanceToAirport.km * 0.7);
+  const distanceToConvention = Math.round(distanceToAirport.km * 0.8);
+
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-green-600" />
+          Distance Information
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-2xl font-bold text-green-700">{distanceToAirport.km} km</div>
+            <div className="text-sm text-muted-foreground">to Kigali International Airport</div>
+            <div className="text-xs mt-1 text-green-600">({distanceToAirport.time} drive)</div>
+          </div>
+          
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-700">{distanceToCityCenter} km</div>
+            <div className="text-sm text-muted-foreground">to Kigali City Center</div>
+            <div className="text-xs mt-1 text-blue-600">(15-20 min drive)</div>
+          </div>
+          
+          <div className="text-center p-4 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-700">{distanceToConvention} km</div>
+            <div className="text-sm text-muted-foreground">to Kigali Convention Centre</div>
+            <div className="text-xs mt-1 text-purple-600">(18-22 min drive)</div>
+          </div>
+        </div>
+        
+        <div className="mt-4 text-xs text-muted-foreground">
+          <p>Note: Distances are approximate and may vary based on traffic conditions.</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 const AccommodationDetails = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -93,7 +155,6 @@ const AccommodationDetails = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
-  // UI selection: VISA | MASTERCARD | MOMO. Maps to backend methods CARD or MOBILE_MONEY
   const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
   const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
   const [card, setCard] = useState({
@@ -117,7 +178,6 @@ const AccommodationDetails = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Derived booking values
   const nights = booking.checkIn && booking.checkOut
     ? Math.max(1, Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24)))
     : 1;
@@ -153,12 +213,7 @@ const AccommodationDetails = () => {
   const handleBookingAndPayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
-
-    console.log("Special requests before sending:", booking.specialRequests);
-
-
     if (!accommodation) return;
-
 
     if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
       toast({
@@ -169,10 +224,7 @@ const AccommodationDetails = () => {
       return;
     }
 
-    // Check if user is verified
-    console.log('User verification status:', user?.isVerified);
     if (user && !user.isVerified) {
-      console.log('User not verified, showing reminder');
       setShowVerificationReminder(true);
       return;
     }
@@ -189,7 +241,6 @@ const AccommodationDetails = () => {
         return;
       }
 
-      // Create booking first
       const response = await bookingsApi.create({
         serviceType: "ACCOMMODATION",
         serviceId: accommodation.id,
@@ -200,7 +251,6 @@ const AccommodationDetails = () => {
       });
 
       if (response.success) {
-        // Compute total and pay immediately (per person per night)
         const checkInDate = new Date(booking.checkIn);
         const checkOutDate = new Date(booking.checkOut);
         const msPerDay = 1000 * 60 * 60 * 24;
@@ -209,7 +259,6 @@ const AccommodationDetails = () => {
         const guests = parseInt(booking.guests) || 1;
         const amount = nights * guests * accommodation.pricePerNight;
 
-        // Validate payment fields
         if (paymentProvider === 'MOMO') {
           if (!momo.phone || !momo.name) {
             throw new Error('Please provide your MoMo number and name.');
@@ -242,7 +291,6 @@ const AccommodationDetails = () => {
 
       let errorMessage = "There was an error processing your booking. Please try again.";
 
-      // Handle different error types
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (error && typeof error === "object" && "status" in error) {
@@ -264,7 +312,7 @@ const AccommodationDetails = () => {
     }
   };
 
-   if (loading) {
+  if (loading) {
     const content = (
       <div className="container mx-auto px-4 py-8">
         <div className="animate-pulse">
@@ -283,7 +331,7 @@ const AccommodationDetails = () => {
     );
   }
   
-    if (error || !accommodation) {
+  if (error || !accommodation) {
     const content = (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
@@ -309,7 +357,7 @@ const AccommodationDetails = () => {
     );
   }
 
-const mainContent = (
+  const mainContent = (
     <main className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <Button variant="ghost" size="sm" asChild>
@@ -345,6 +393,12 @@ const mainContent = (
               />
             </div>
           )}
+
+          {/* Distance Information Component */}
+          <DistanceInfo 
+            accommodationName={accommodation.name} 
+            location={accommodation.location.city} 
+          />
 
           <Card className="mb-6">
             <CardHeader>

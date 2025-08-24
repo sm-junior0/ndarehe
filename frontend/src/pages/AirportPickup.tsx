@@ -36,6 +36,10 @@ interface Transportation {
   amenities: string[];
 }
 
+const getAirportPickupImage = (vehicle: Transportation) => {
+  return vehicle.images[1] || vehicle.images[0] || "/placeholder.svg";
+};
+
 const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   const location = useLocation();
   const inDashboard = location.pathname.startsWith('/dashboard');
@@ -74,7 +78,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
     setTransportationLoading(true);
     try {
       const response = await transportationApi.getAll();
-      
+
       if (response.success) {
         // Filter for vehicles suitable for airport pickup
         const airportVehicles = response.data.transportation.filter(
@@ -98,13 +102,13 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
 
   const openModal = (car: Transportation) => {
     setSelectedCar(car);
-    setBooking({ 
-      flightNumber: "", 
-      airline: "", 
-      destination: "", 
-      date: "", 
-      time: "", 
-      passengers: 1 
+    setBooking({
+      flightNumber: "",
+      airline: "",
+      destination: "",
+      date: "",
+      time: "",
+      passengers: 1
     });
     setConfirmed(false);
     setModalOpen(true);
@@ -113,13 +117,13 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCar) return;
-    
+
     // Check if user is verified
     if (user && !user.isVerified) {
       setShowVerificationReminder(true);
       return;
     }
-    
+
     try {
       const response = await bookingsApi.create({
         serviceType: "TRANSPORTATION",
@@ -132,7 +136,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
 
       if (response.success) {
         const amount = selectedCar.pricePerTrip;
-        
+
         // Validate payment fields
         if (paymentProvider === 'MOMO') {
           if (!momo.phone || !momo.name) {
@@ -143,7 +147,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
             throw new Error('Please fill in all card fields.');
           }
         }
-        
+
         setIsPaying(true);
         const payRes = await paymentsApi.createSingle({
           bookingId: (response as any).data.booking.id,
@@ -154,9 +158,9 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
 
         if ((payRes as any).success) {
           setConfirmed(true);
-          toast({ 
-            title: "Airport Pickup Confirmed!", 
-            description: `Your ${selectedCar.name} is booked for airport pickup.` 
+          toast({
+            title: "Airport Pickup Confirmed!",
+            description: `Your ${selectedCar.name} is booked for airport pickup.`
           });
         } else {
           throw new Error('Payment failed');
@@ -166,7 +170,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
       }
     } catch (error: any) {
       console.error("Booking error:", error);
-      
+
       if (error.message && error.message.includes("verify your email")) {
         setShowVerificationReminder(true);
       } else {
@@ -196,7 +200,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   return (
     <div className="min-h-screen flex flex-col">
       {showLayout && <Header />}
-      
+
       <div className="flex-1 w-full px-4 py-8 bg-gradient-to-b from-gray-50 to-white">
         {/* Header */}
         <div className="mb-8">
@@ -224,7 +228,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
             <h2 className="text-2xl font-bold mb-2">Choose Your Vehicle</h2>
             <p className="text-muted-foreground">Select the perfect vehicle for your airport transfer</p>
           </div>
-          
+
           {transportationLoading ? (
             <div className="text-center py-8">
               <div className="flex items-center justify-center">
@@ -236,17 +240,17 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {vehicles.map((vehicle) => {
                 const luggageCapacity = getLuggageCapacity(vehicle.vehicleType, vehicle.capacity);
-                
+
                 return (
-                  <Card 
-                    key={vehicle.id} 
+                  <Card
+                    key={vehicle.id}
                     className="group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-lg cursor-pointer h-full flex flex-col"
                     onClick={() => openModal(vehicle)}
                   >
                     <div className="aspect-video bg-muted overflow-hidden">
-                      <img 
-                        src={vehicle.images[0] || "/placeholder.svg"} 
-                        alt={vehicle.name} 
+                      <img
+                        src={getAirportPickupImage(vehicle)}
+                        alt={vehicle.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
                     </div>
@@ -276,7 +280,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                           <span className="text-sm text-muted-foreground">{luggageCapacity} luggage</span>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-2">
                         {vehicle.amenities.slice(0, 3).map((amenity: string, index: number) => (
                           <Badge key={index} variant="outline" className="text-xs">
@@ -301,7 +305,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
               <p className="text-muted-foreground text-lg">
                 No airport pickup vehicles available at the moment.
               </p>
-              <Button 
+              <Button
                 onClick={fetchTransportationServices}
                 className="mt-4"
               >
@@ -318,9 +322,9 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
               <form onSubmit={handleBooking} className="space-y-4">
                 <DialogHeader>
                   <div className="flex items-start gap-4">
-                    <img 
-                      src={selectedCar.images[0] || "/placeholder.svg"} 
-                      alt={selectedCar.name} 
+                    <img
+                      src={selectedCar.images[0] || "/placeholder.svg"}
+                      alt={selectedCar.name}
                       className="w-24 h-16 object-cover rounded-lg"
                     />
                     <div>
@@ -331,93 +335,93 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                     </div>
                   </div>
                 </DialogHeader>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="modal-flight-number">Flight Number</Label>
-                    <Input 
-                      id="modal-flight-number" 
-                      value={booking.flightNumber} 
-                      onChange={e => setBooking({ ...booking, flightNumber: e.target.value })} 
+                    <Input
+                      id="modal-flight-number"
+                      value={booking.flightNumber}
+                      onChange={e => setBooking({ ...booking, flightNumber: e.target.value })}
                       className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <Label htmlFor="modal-airline">Airline</Label>
-                    <Input 
-                      id="modal-airline" 
-                      value={booking.airline} 
-                      onChange={e => setBooking({ ...booking, airline: e.target.value })} 
+                    <Input
+                      id="modal-airline"
+                      value={booking.airline}
+                      onChange={e => setBooking({ ...booking, airline: e.target.value })}
                       className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      required 
+                      required
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="modal-destination">Destination Address</Label>
-                  <Input 
-                    id="modal-destination" 
-                    placeholder="Enter your destination address" 
-                    value={booking.destination} 
-                    onChange={e => setBooking({ ...booking, destination: e.target.value })} 
+                  <Input
+                    id="modal-destination"
+                    placeholder="Enter your destination address"
+                    value={booking.destination}
+                    onChange={e => setBooking({ ...booking, destination: e.target.value })}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                    required 
+                    required
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="modal-date">Pickup Date</Label>
-                    <Input 
-                      id="modal-date" 
-                      type="date" 
-                      value={booking.date} 
-                      onChange={e => setBooking({ ...booking, date: e.target.value })} 
+                    <Input
+                      id="modal-date"
+                      type="date"
+                      value={booking.date}
+                      onChange={e => setBooking({ ...booking, date: e.target.value })}
                       className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      required 
+                      required
                     />
                   </div>
                   <div>
                     <Label htmlFor="modal-time">Pickup Time</Label>
-                    <Input 
-                      id="modal-time" 
-                      type="time" 
-                      value={booking.time} 
-                      onChange={e => setBooking({ ...booking, time: e.target.value })} 
+                    <Input
+                      id="modal-time"
+                      type="time"
+                      value={booking.time}
+                      onChange={e => setBooking({ ...booking, time: e.target.value })}
                       className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      required 
+                      required
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <Label htmlFor="modal-passengers">Passengers</Label>
-                  <Input 
-                    id="modal-passengers" 
-                    type="number" 
-                    min="1" 
-                    max={selectedCar.capacity} 
-                    value={booking.passengers} 
-                    onChange={e => setBooking({ ...booking, passengers: Number(e.target.value) })} 
+                  <Input
+                    id="modal-passengers"
+                    type="number"
+                    min="1"
+                    max={selectedCar.capacity}
+                    value={booking.passengers}
+                    onChange={e => setBooking({ ...booking, passengers: Number(e.target.value) })}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                    required 
+                    required
                   />
                   <p className="text-xs text-muted-foreground mt-1">Max capacity: {selectedCar.capacity} passengers</p>
                 </div>
-                
+
                 {/* Payment Method Selection */}
                 <div className="space-y-2">
                   <h4 className="font-semibold">Payment Method</h4>
                   <div className="flex items-center gap-4">
-                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider==='VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
+                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider === 'VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
                       <img src="/logos/visa.svg" alt="Visa" className="h-6" />
                     </button>
-                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider==='MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
+                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider === 'MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
                       <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
                     </button>
-                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider==='MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
+                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider === 'MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
                       <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
                     </button>
                   </div>
@@ -472,7 +476,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="bg-secondary/50 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <div>
@@ -482,7 +486,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                     <p className="text-xl font-bold">{selectedCar.currency} {selectedCar.pricePerTrip.toLocaleString()}</p>
                   </div>
                 </div>
-                
+
                 <DialogFooter>
                   <Button type="submit" className="w-full" disabled={isPaying}>
                     {isPaying ? 'Processing...' : 'Confirm Booking'}
@@ -490,7 +494,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                 </DialogFooter>
               </form>
             )}
-            
+
             {selectedCar && confirmed && (
               <div className="text-center space-y-6 py-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
@@ -512,7 +516,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
         </Dialog>
 
         {/* Email Verification Reminder */}
-        <EmailVerificationReminder 
+        <EmailVerificationReminder
           isOpen={showVerificationReminder}
           onClose={() => setShowVerificationReminder(false)}
         />
