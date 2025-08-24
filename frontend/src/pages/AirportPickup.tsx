@@ -141,7 +141,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {showLayout && <Header />}
       
       <div className="container mx-auto px-4 py-8">

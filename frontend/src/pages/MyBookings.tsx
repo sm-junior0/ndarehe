@@ -140,7 +140,7 @@ const MyBookings = ({ showLayout = true }: { showLayout?: boolean }) => {
   const cancelledBookings = bookings.filter(b => b.status === 'CANCELLED');
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {showLayout && <Header />}
 
       <main className="container mx-auto px-4 py-8">
