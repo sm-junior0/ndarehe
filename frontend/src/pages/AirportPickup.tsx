@@ -194,10 +194,10 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       {showLayout && <Header />}
       
-      <div className="container mx-auto px-4 py-8">
+      <div className="flex-1 w-full px-4 py-8 bg-gradient-to-b from-gray-50 to-white">
         {/* Header */}
         <div className="mb-8">
           {showLayout && (
@@ -219,7 +219,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
         </div>
 
         {/* Vehicle Selection */}
-        <div className="max-w-4xl mx-auto">
+        <div className="w-full max-w-7xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold mb-2">Choose Your Vehicle</h2>
             <p className="text-muted-foreground">Select the perfect vehicle for your airport transfer</p>
@@ -240,7 +240,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                 return (
                   <Card 
                     key={vehicle.id} 
-                    className="group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-lg cursor-pointer"
+                    className="group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-lg cursor-pointer h-full flex flex-col"
                     onClick={() => openModal(vehicle)}
                   >
                     <div className="aspect-video bg-muted overflow-hidden">
@@ -261,7 +261,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                         {vehicle.description}
                       </p>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className="pt-0 flex-1 flex flex-col justify-end">
                       <div className="flex items-center gap-4 mb-3">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
