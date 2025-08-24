@@ -88,6 +88,7 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/dashboard/accommodations" element={<ProtectedRoute><AccommodationsDashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/tours" element={<ProtectedRoute><ToursDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/transportation" element={<ProtectedRoute><TransportationDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/airport-pickup" element={<ProtectedRoute><AirportPickupDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/tours" element={<ProtectedRoute><ToursDashboard /></ProtectedRoute>} />
@@ -98,6 +99,10 @@ function App() {
             <Route path="/dashboard/accommodations/:id" element={
               <DashboardLayout title="Accommodation Details">
                 <AccommodationDetails />
+              </DashboardLayout>} />
+            <Route path="/dashboard/tours/:id" element={
+              <DashboardLayout title="Tours Details">
+                <TourDetails />
               </DashboardLayout>} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/explore" element={<Explore />} />
