@@ -309,7 +309,6 @@ const Transportation = () => {
         {filteredTransportation.map((service) => (
           <Card key={service.id} className="group overflow-hidden hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border-0 shadow-lg">
             <div className="aspect-video bg-muted overflow-hidden">
-                // Then in your JSX, update the image source:
               <img
                 src={getTransportationImage(service)}
                 alt={service.name}
