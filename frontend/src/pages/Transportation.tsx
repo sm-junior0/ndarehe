@@ -246,6 +246,11 @@ const Transportation = () => {
           </h1>
           <p className="text-xl text-muted-foreground">Reliable transportation across Rwanda</p>
         </div>
+
+        <div className="text-center mb-8 mt-8">
+            <h2 className="text-2xl font-bold mb-2">Choose Your Vehicle</h2>
+            <p className="text-muted-foreground">Select the perfect vehicle for your transportation</p>
+          </div>
       </div>
 
       {/* Error Display */}
@@ -262,46 +267,6 @@ const Transportation = () => {
           </Button>
         </div>
       )}
-
-      {/* Filters */}
-      <div className="bg-gradient-to-r from-green-50 to-white border border-green-200 rounded-2xl p-6 mb-8 shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="border-green-200 focus:border-green-500 focus:ring-green-500">
-              <SelectValue placeholder="Service Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {transportTypes.map(type => (
-                <SelectItem key={type} value={type}>{type.replace('_', ' ')}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-            <SelectTrigger className="border-green-200 focus:border-green-500 focus:ring-green-500">
-              <SelectValue placeholder="Vehicle Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Vehicles</SelectItem>
-              {vehicleTypes.map(vehicle => (
-                <SelectItem key={vehicle} value={vehicle}>{vehicle}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            onClick={() => {
-              setSelectedType("all");
-              setSelectedVehicle("all");
-            }}
-            variant="outline"
-            className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
-          >
-            Clear Filters
-          </Button>
-        </div>
-      </div>
 
 
       {/* Transportation Grid */}
