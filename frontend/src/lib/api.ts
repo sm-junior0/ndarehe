@@ -34,31 +34,45 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 // Generic API request function
 const apiRequest = async <T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeout = 10000 // 10 second default timeout
 ): Promise<T> => {
-  const token = getAuthToken();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-  const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-    ...options,
-  };
+  try {
+    const token = getAuthToken();
+    const config: RequestInit = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...options.headers,
+      },
+      ...options,
+      signal: controller.signal,
+    };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-  return handleResponse<T>(response);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    clearTimeout(timeoutId);
+    return handleResponse<T>(response);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new ApiError(408, 'Request timeout');
+    }
+    throw error;
+  }
 };
 
 // Auth API calls
 export const authApi = {
-  login: async (email: string, password: string) => {
-    return apiRequest<ApiResponse<{ user: any; token: string }>>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-  },
+  login: async (email: string, password: string, signal?: AbortSignal) => {
+  return apiRequest<ApiResponse<{ user: any; token: string }>>('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+    signal, // Pass the signal through
+  });
+},
 
   register: async (userData: {
     firstName: string;

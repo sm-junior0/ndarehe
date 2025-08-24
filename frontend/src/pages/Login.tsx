@@ -25,8 +25,22 @@ const Login = () => {
     setLoading(true);
     setError("");
     
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      setLoading(false);
+      return;
+    }
+
+    // Declare timeoutId at the function scope so it's accessible in catch/finally
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
-      const response = await authApi.login(email, password);
+      const controller = new AbortController();
+      timeoutId = setTimeout(() => controller.abort(), 10000); 
+
+      const response = await authApi.login(email, password, controller.signal);
+
+      if (timeoutId) clearTimeout(timeoutId);
       
       if (response.success) {
         // Store token and update auth context with user data
@@ -54,20 +68,33 @@ const Login = () => {
         }
       }
     } catch (err: any) {
+      // Clear timeout if it exists
+      if (timeoutId) clearTimeout(timeoutId);
+      
       console.error("Login error:", err);
-      const errorMessage = err.message || "Login failed. Please check your credentials.";
-      setError(errorMessage);
       
-      // Check if error is related to email verification
-      if (errorMessage.toLowerCase().includes("verify") || errorMessage.toLowerCase().includes("email")) {
-        setShowResend(true);
+      if (err.name === 'AbortError') {
+        setError("Login timeout. Please try again.");
+        toast({
+          title: "Login Timeout",
+          description: "The request took too long. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        const errorMessage = err.message || "Login failed. Please check your credentials.";
+        setError(errorMessage);
+        
+        // Check if error is related to email verification
+        if (errorMessage.toLowerCase().includes("verify") || errorMessage.toLowerCase().includes("email")) {
+          setShowResend(true);
+        }
+        
+        toast({
+          title: "Login Failed",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
-      
-      toast({
-        title: "Login Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }

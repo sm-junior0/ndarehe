@@ -1,29 +1,36 @@
+// config/database.ts
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: ['error'], // Only log errors in production
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+  // Connection pool optimization
+  transactionOptions: {
+    maxWait: 5000,
+    timeout: 10000,
+  },
 });
 
-// Test database connection
-export const testConnection = async (): Promise<void> => {
+// Connection pool settings for serverless
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
+
+// Add health check
+export const checkDatabaseConnection = async (): Promise<boolean> => {
   try {
-    await prisma.$connect();
-    console.log('✅ Database connected successfully');
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    process.exit(1);
+    console.error('Database connection error:', error);
+    return false;
   }
 };
-
-// Graceful shutdown
-export const gracefulShutdown = async (): Promise<void> => {
-  console.log('🔄 Shutting down database connection...');
-  await prisma.$disconnect();
-  console.log('✅ Database connection closed');
-};
-
-// Handle process termination
-process.on('SIGINT', gracefulShutdown);
-process.on('SIGTERM', gracefulShutdown);
-
-export { prisma }; 

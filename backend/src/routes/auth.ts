@@ -8,6 +8,8 @@ import { validate, authSchemas } from '../middleware/validation';
 import { sendEmail, emailTemplates } from '../utils/email';
 import { generateToken, generateEmailVerificationToken, generatePasswordResetToken } from '../utils/jwt';
 import { AuthenticatedRequest, JWTPayload } from '../types';
+import { verifyPassword } from '../utils/password';
+
 
 const router = express.Router();
 
@@ -193,7 +195,7 @@ router.post('/register', validate(authSchemas.register), async (req, res, next) 
       targetType: 'USER',
       targetId: user.id,
       message: `User registered: ${user.email}`,
-    }).catch(() => {});
+    }).catch(() => { });
 
     // Generate verification token
     const verificationToken = generateEmailVerificationToken(user.id);
@@ -236,71 +238,99 @@ router.post('/register', validate(authSchemas.register), async (req, res, next) 
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
+// @desc    Login user
+// @route   POST /api/auth/login
+// @access  Public
 router.post('/login', validate(authSchemas.login), async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    // Check if user exists
-    const user = await prisma.user.findUnique({
-      where: { email }
-    });
+    // Set timeout for the entire login operation
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Login timeout')), 5000)
+    );
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-    }
+    // Use Promise.race with the actual login logic
+    await Promise.race([
+      (async () => {
+        // Single optimized query with only needed fields
+        const user = await prisma.user.findUnique({
+          where: { email: email.toLowerCase().trim() },
+          select: {
+            id: true,
+            email: true,
+            password: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            isVerified: true,
+            isActive: true
+          }
+        });
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(401).json({
-        success: false,
-        error: 'Account is deactivated'
-      });
-    }
+        if (!user || !user.isActive) {
+          res.status(401).json({ // Remove 'return'
+            success: false,
+            error: 'Invalid credentials'
+          });
+          return; // Add explicit return instead
+        }
 
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid credentials'
-      });
-    }
 
-    // Generate JWT token
-    const token = generateToken({
-      id: user.id,
-      email: user.email,
-      role: user.role
-    });
+        // Use the optimized password verification
+        const isPasswordValid = await verifyPassword(password, user.password);
 
-    res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        user: {
+        if (!isPasswordValid) {
+          res.status(401).json({ // Remove 'return'
+            success: false,
+            error: 'Invalid credentials'
+          });
+          return; // Add explicit return instead
+        }
+
+        // Generate token
+        const token = generateToken({
           id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName,
           email: user.email,
-          role: user.role,
-          isVerified: user.isVerified
-        },
-        token
-      }
-    });
+          role: user.role
+        });
 
-    // Log activity
-    logActivity({
-      type: ActivityType.USER_LOGGED_IN,
-      actorUserId: user.id,
-      targetType: 'USER',
-      targetId: user.id,
-      message: `User logged in: ${user.email}`,
-    }).catch(() => {});
+        // Response
+        res.json({
+          success: true,
+          message: 'Login successful',
+          data: {
+            user: {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              role: user.role,
+              isVerified: user.isVerified
+            },
+            token
+          }
+        });
+
+        // Non-blocking activity logging
+        logActivity({
+          type: ActivityType.USER_LOGGED_IN,
+          actorUserId: user.id,
+          targetType: 'USER',
+          targetId: user.id,
+          message: `User logged in: ${user.email}`,
+        }).catch(() => { });
+      })(),
+      timeoutPromise
+    ]);
+
   } catch (error) {
+    if (typeof error === 'object' && error !== null && 'message' in error && (error as any).message === 'Login timeout') {
+      return res.status(408).json({
+        success: false,
+        error: 'Login timeout. Please try again.'
+      });
+    }
     next(error);
   }
 });
@@ -318,7 +348,7 @@ router.get('/verify-email', async (req, res, next) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         return res.redirect(`${frontendUrl}/verify-email?status=error&message=Verification token is required`);
       }
-      
+
       return res.status(400).json({
         success: false,
         error: 'Verification token is required'
@@ -327,7 +357,7 @@ router.get('/verify-email', async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token as string, process.env.JWT_SECRET!) as { userId: string };
-    
+
     // Update user
     const user = await prisma.user.update({
       where: { id: decoded.userId },
@@ -352,7 +382,7 @@ router.get('/verify-email', async (req, res, next) => {
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         return res.redirect(`${frontendUrl}/verify-email?status=error&message=Invalid or expired verification token`);
       }
-      
+
       return res.status(400).json({
         success: false,
         error: 'Invalid or expired verification token'
@@ -373,7 +403,7 @@ router.post('/resend-verification', protect, async (req: AuthenticatedRequest, r
 
     // Get user - either by provided email or authenticated user ID
     let user;
-    
+
     if (email) {
       user = await prisma.user.findUnique({
         where: { email }
@@ -405,7 +435,7 @@ router.post('/resend-verification', protect, async (req: AuthenticatedRequest, r
     try {
       const { subject, html } = emailTemplates.welcome(user.firstName, verificationToken);
       await sendEmail(user.email, subject, html);
-      
+
       res.json({
         success: true,
         message: 'Verification email sent successfully'
@@ -547,7 +577,7 @@ router.post('/logout', protect, (req, res) => {
       targetType: 'USER',
       targetId: (req as any).user.id,
       message: `User logged out: ${(req as any).user.email}`,
-    }).catch(() => {});
+    }).catch(() => { });
   }
 });
 
