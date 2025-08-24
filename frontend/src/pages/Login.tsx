@@ -36,7 +36,7 @@ const Login = () => {
     
     try {
       const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 20000); 
+      timeoutId = setTimeout(() => controller.abort(), 25000); 
 
       const response = await authApi.login(email, password, controller.signal);
 

@@ -247,7 +247,7 @@ router.post('/login', validate(authSchemas.login), async (req, res, next) => {
 
     // Set timeout for the entire login operation
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Login timeout')), 15000)
+      setTimeout(() => reject(new Error('Login timeout')), 20000)
     );
 
     // Use Promise.race with the actual login logic
