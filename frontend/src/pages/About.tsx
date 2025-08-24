@@ -152,7 +152,7 @@ const About = () => {
       name: "Isaro Chadia",
       country: "Rwanda",
       flag: "🇷🇼",
-      image: "https://images.unsplash.com/photo-1500048993953-d23a43626643?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+      image: "https://c.files.bbci.co.uk/061E/production/_118166510_getty_hindadeby.jpg",
       text: "NDAREHE's platform is so easy to use! I found the perfect accommodation for my family vacation within minutes. Their customer service team was incredibly helpful too."
     },
     {
