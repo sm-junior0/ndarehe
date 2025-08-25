@@ -92,7 +92,7 @@ function App() {
             <Route path="/dashboard/transportation" element={<ProtectedRoute><TransportationDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/airport-pickup" element={<ProtectedRoute><AirportPickupDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/tours" element={<ProtectedRoute><ToursDashboard /></ProtectedRoute>} />
-            {/* <Route path="/dashboard/blog" element={<ProtectedRoute><BlogDashboard /></ProtectedRoute>} /> */}
+            <Route path="/dashboard/blog" element={<ProtectedRoute><BlogDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/my-bookings" element={<ProtectedRoute><MyBookingsDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/notifications" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
@@ -104,7 +104,7 @@ function App() {
               <DashboardLayout title="Tours Details">
                 <TourDetails />
               </DashboardLayout>} />
-            {/* <Route path="/blog" element={<Blog />} /> */}
+            <Route path="/blog" element={<Blog />} />
             <Route path="/explore" element={<Explore />} />
 
             {/* Protected Routes */}
@@ -132,11 +132,11 @@ function App() {
                 <ToursDashboard />
               </RoleBasedRoute>
             } />
-            <Route path="/dashboard/blog" element={
+            {/* <Route path="/dashboard/blog" element={
               <RoleBasedRoute allowedRoles={["USER"]}>
                 <BlogDashboard />
               </RoleBasedRoute>
-            } />
+            } /> */}
             <Route path="/dashboard/my-bookings" element={
               <RoleBasedRoute allowedRoles={["USER"]}>
                 <MyBookingsDashboard />
