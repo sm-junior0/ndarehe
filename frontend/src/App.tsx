@@ -132,11 +132,11 @@ function App() {
                 <ToursDashboard />
               </RoleBasedRoute>
             } />
-            {/* <Route path="/dashboard/blog" element={
+            <Route path="/dashboard/blog" element={
               <RoleBasedRoute allowedRoles={["USER"]}>
                 <BlogDashboard />
               </RoleBasedRoute>
-            } /> */}
+            } />
             <Route path="/dashboard/my-bookings" element={
               <RoleBasedRoute allowedRoles={["USER"]}>
                 <MyBookingsDashboard />
