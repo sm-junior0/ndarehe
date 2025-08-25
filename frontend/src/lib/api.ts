@@ -35,7 +35,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 const apiRequest = async <T>(
   endpoint: string,
   options: RequestInit = {},
-  timeout = 30000 // 10 second default timeout
+  timeout = 60000 // 30 second default timeout
 ): Promise<T> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
