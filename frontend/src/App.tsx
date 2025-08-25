@@ -104,7 +104,7 @@ function App() {
               <DashboardLayout title="Tours Details">
                 <TourDetails />
               </DashboardLayout>} />
-            <Route path="/blog" element={<Blog />} />
+            {/* <Route path="/blog" element={<Blog />} /> */}
             <Route path="/explore" element={<Explore />} />
 
             {/* Protected Routes */}
