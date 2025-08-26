@@ -46,14 +46,14 @@ const Explore = () => {
       href: "/tours",
       color: "bg-orange-50 text-orange-600"
     },
-    {
-      id: "blog",
-      title: "Travel Blog",
-      description: "Discover Rwanda through our travel stories and tips",
-      icon: BookOpen,
-      href: "/blog",
-      color: "bg-red-50 text-red-600"
-    }
+    // {
+    //   id: "blog",
+    //   title: "Travel Blog",
+    //   description: "Discover Rwanda through our travel stories and tips",
+    //   icon: BookOpen,
+    //   href: "/blog",
+    //   color: "bg-red-50 text-red-600"
+    // }
   ];
 
   const sidebarItems = [
@@ -62,7 +62,7 @@ const Explore = () => {
     { id: "transportation", name: "Transportation", icon: Car },
     { id: "airport-pickup", name: "Airport Pickup", icon: Plane },
     { id: "experiences", name: "Experiences", icon: MapPin },
-    { id: "blog", name: "Blog", icon: BookOpen },
+    // { id: "blog", name: "Blog", icon: BookOpen },
   ];
 
   return (

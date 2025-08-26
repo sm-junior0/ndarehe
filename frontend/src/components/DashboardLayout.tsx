@@ -26,7 +26,6 @@ const navItems = [
   { to: '/dashboard/transportation', label: 'Transportation', icon: Car },
   { to: '/dashboard/airport-pickup', label: 'Airport Pickup', icon: Plane },
   { to: '/dashboard/tours', label: 'Experiences', icon: MapPin },
-  { to: '/dashboard/blog', label: 'Blog', icon: BookOpen },
 ];
 
 export default function DashboardLayout({ title, children }: DashboardLayoutProps) {
