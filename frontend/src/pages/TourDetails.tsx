@@ -209,19 +209,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Challenging</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Dry season (June-September)</span>
                 </div>
               </div>
@@ -270,19 +266,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Moderate</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Year-round</span>
                 </div>
               </div>
@@ -331,19 +323,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Easy</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Year-round</span>
                 </div>
               </div>
@@ -391,19 +379,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Easy</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Year-round</span>
                 </div>
               </div>
@@ -452,19 +436,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Easy</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Year-round</span>
                 </div>
               </div>
@@ -512,19 +492,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Moderate</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Dry season</span>
                 </div>
               </div>
@@ -572,19 +548,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Easy</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Year-round</span>
                 </div>
               </div>
@@ -632,19 +604,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Easy</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Dry season</span>
                 </div>
               </div>
@@ -691,19 +659,15 @@ const TourDetails = () => {
               <h4 className="font-semibold">Key Information</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
                   <span>Duration: {tour.duration}h</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Users className="h-3 w-3 text-muted-foreground" />
                   <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span>⭐</span>
                   <span>Difficulty: Moderate</span>
                 </div>
                 <div className="flex items-center gap-1 col-span-2">
-                  <span>📅</span>
                   <span>Best time: Dry season</span>
                 </div>
               </div>
