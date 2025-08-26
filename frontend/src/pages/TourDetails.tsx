@@ -52,7 +52,6 @@ const TourDetails = () => {
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
   const [success, setSuccess] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
@@ -172,6 +171,568 @@ const TourDetails = () => {
     }
   };
 
+  const renderExperienceCard = () => {
+    if (!tour) return null;
+
+    const experienceCards: Record<string, JSX.Element> = {
+      "Gorilla Trekking Experience": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Gorilla Trekking Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Adventure</h4>
+              <p className="text-sm text-muted-foreground">
+                Encounter Rwanda's majestic mountain gorillas in their natural habitat. This life-changing experience 
+                takes you through Volcanoes National Park with intimate encounters with endangered mountain gorillas.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Experience Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Face-to-face with mountain gorillas</li>
+                <li>• Guided trek through rainforest</li>
+                <li>• Professional trackers and guides</li>
+                <li>• Certificate of participation</li>
+                <li>• Breathtaking volcanic landscapes</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Challenging</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Dry season (June-September)</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+           
+          </CardContent>
+        </Card>
+      ),
+      "Rwanda Birding Experience": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Birding Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Experience</h4>
+              <p className="text-sm text-muted-foreground">
+                Discover Rwanda's rich avian diversity with 703 species, including 29 Albertine Rift Endemics. 
+                Experience the best montane birding in Africa with expert guides.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Birding Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• 29 Albertine Rift Endemic species</li>
+                <li>• Red-collared Babbler sightings</li>
+                <li>• Professional birding guides</li>
+                <li>• Diverse habitats exploration</li>
+                <li>• Photography opportunities</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Moderate</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Year-round</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+            
+          </CardContent>
+        </Card>
+      ),
+      "Kigali City Tour": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Kigali City Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Tour</h4>
+              <p className="text-sm text-muted-foreground">
+                Discover Africa's cleanest city! Explore Kigali's vibrant culture, history, and modern African spirit 
+                with comprehensive city exploration and local insights.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Tour Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Kigali Genocide Memorial visit</li>
+                <li>• Local markets exploration</li>
+                <li>• Art centers and craft shops</li>
+                <li>• City viewpoint photography</li>
+                <li>• Cultural experiences</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Easy</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Year-round</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+          </CardContent>
+        </Card>
+      ),
+      "Rwandan Cultural Experience": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Cultural Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Experience</h4>
+              <p className="text-sm text-muted-foreground">
+                Immerse yourself in Rwanda's living traditions through music, dance, and daily life with local communities. 
+                Discover the rich cultural heritage of the Land of a Thousand Hills.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Cultural Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Traditional dance performances</li>
+                <li>• Craft demonstrations</li>
+                <li>• Local cuisine cooking lessons</li>
+                <li>• Community storytelling</li>
+                <li>• Traditional welcome ceremonies</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Easy</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Year-round</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+            
+          </CardContent>
+        </Card>
+      ),
+      "Kings Palace Museum Tour": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>King's Palace Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Tour</h4>
+              <p className="text-sm text-muted-foreground">
+                Step back in time at Rwanda's historic Kings Palace with traditional architecture, cultural performances, 
+                and the famous long-horned Inyambo cattle.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Tour Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Traditional royal palace tour</li>
+                <li>• Long-horned Inyambo cattle</li>
+                <li>• Cultural performances</li>
+                <li>• Historical artifacts</li>
+                <li>• Storytelling sessions</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Easy</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Year-round</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+          </CardContent>
+        </Card>
+      ),
+      "Musanze Caves Exploration": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Caves Exploration</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Adventure</h4>
+              <p className="text-sm text-muted-foreground">
+                Explore ancient lava caves and Rwanda's volcanic landscapes with guided tours through fascinating 
+                lava tunnels formed over 65 million years ago.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Exploration Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Lava tunnel exploration</li>
+                <li>• Geological formations</li>
+                <li>• Safety equipment provided</li>
+                <li>• Professional cave guides</li>
+                <li>• Volcanic landscape views</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Moderate</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Dry season</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+          </CardContent>
+        </Card>
+      ),
+      "Lake Kivu Experience": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Lake Kivu Experience</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Experience</h4>
+              <p className="text-sm text-muted-foreground">
+                Experience the serene beauty of Rwanda's sparkling Lake Kivu with boat trips, island exploration, 
+                and water activities on Africa's sixth largest lake.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Lake Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Boat tours to islands</li>
+                <li>• Freshwater swimming</li>
+                <li>• Beach relaxation</li>
+                <li>• Lakeside dining</li>
+                <li>• Scenic photography</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Easy</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Year-round</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+
+          </CardContent>
+        </Card>
+      ),
+      "Akagera Wildlife Safari": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Wildlife Safari</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Safari</h4>
+              <p className="text-sm text-muted-foreground">
+                Discover Rwanda's wild side with unforgettable Akagera adventures including game drives and boat safaris 
+                in a diverse landscape of savannah, woodland, and wetlands.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Safari Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Big Five game viewing</li>
+                <li>• Boat trips on Lake Ihema</li>
+                <li>• 490 bird species</li>
+                <li>• Professional safari guides</li>
+                <li>• Diverse ecosystems</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Easy</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Dry season</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ),
+      "Nyungwe National Park Adventure": (
+        <Card className="sticky top-24">
+          <CardHeader>
+            <CardTitle>Nyungwe Adventure</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-4">
+              <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
+              <div className="text-muted-foreground">per person</div>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-semibold">About This Adventure</h4>
+              <p className="text-sm text-muted-foreground">
+                Explore one of Africa's oldest rainforests with chimpanzee trekking, canopy walks, and breathtaking 
+                waterfalls in this biodiversity-rich national park.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Park Highlights</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>• Chimpanzee trekking</li>
+                <li>• Canopy walk adventure</li>
+                <li>• Waterfall hikes</li>
+                <li>• 13 primate species</li>
+                <li>• 300+ bird species</li>
+              </ul>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold">Key Information</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-muted-foreground" />
+                  <span>Duration: {tour.duration}h</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-muted-foreground" />
+                  <span>Group: {tour.minParticipants}-{tour.maxParticipants}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span>⭐</span>
+                  <span>Difficulty: Moderate</span>
+                </div>
+                <div className="flex items-center gap-1 col-span-2">
+                  <span>📅</span>
+                  <span>Best time: Dry season</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-1">Meeting Point</h4>
+              <p className="text-sm text-muted-foreground">{tour.meetingPoint}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    };
+
+    return experienceCards[tour.name] || (
+      <Card className="sticky top-24">
+        <CardHeader>
+          <CardTitle>Book This Experience</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center mb-4">
+            <div className="text-3xl font-bold">RWF {tour.pricePerPerson.toLocaleString()}</div>
+            <div className="text-muted-foreground">per person</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (loading) {
     const content = (
       <div className="container mx-auto px-4 py-8">
@@ -253,7 +814,7 @@ const TourDetails = () => {
           
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>About this tour</CardTitle>
+              <CardTitle>About this experience</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground mb-4">{tour.description}</p>
@@ -303,199 +864,9 @@ const TourDetails = () => {
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="sticky top-24">
-            <CardHeader>
-              <CardTitle>Book this tour</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center mb-4">
-                <div className="text-3xl font-bold">RWF {tour.pricePerPerson.toLocaleString()}</div>
-                <div className="text-muted-foreground">per person</div>
-              </div>
-              
-              <Button className="w-full" size="lg" onClick={() => setModalOpen(true)}>
-                Book Now
-              </Button>
-            </CardContent>
-          </Card>
+          {renderExperienceCard()}
         </div>
       </div>
-
-      {/* Booking Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/30">
-            {!success && (
-              <form onSubmit={handleBooking} className="space-y-4">
-                <DialogHeader>
-                  <div className="flex items-start gap-4">
-                    <img
-                      src={tour.images[0]}
-                      alt={tour.name}
-                      className="w-24 h-24 object-cover rounded-lg"
-                    />
-                    <div>
-                      <DialogTitle>{tour.name}</DialogTitle>
-                      <DialogDescription>
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-1" />
-                          {tour.location.name} • {tour.duration} hours
-                        </div>
-                        <div className="flex items-center mt-1">
-                          <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                          {tour.averageRating || 0} • RWF {tour.pricePerPerson.toLocaleString()}/person
-                        </div>
-                      </DialogDescription>
-                    </div>
-                  </div>
-                </DialogHeader>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="date">Tour Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={booking.date}
-                      onChange={e => setBooking({ ...booking, date: e.target.value })}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="participants">Number of Participants</Label>
-                    <Input
-                      id="participants"
-                      type="number"
-                      min={tour.minParticipants}
-                      max={tour.maxParticipants}
-                      value={booking.participants}
-                      onChange={e => setBooking({ ...booking, participants: e.target.value })}
-                      className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="specialRequests">Special Requests (Optional)</Label>
-                  <Input
-                    id="specialRequests"
-                    placeholder="Any special requirements or requests..."
-                    value={booking.specialRequests}
-                    onChange={e => setBooking({ ...booking, specialRequests: e.target.value })}
-                    className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-
-                {/* Payment section (same form) */}
-                <div className="space-y-2">
-                  <h4 className="font-semibold">Payment Method</h4>
-                  <div className="flex items-center gap-4">
-                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider === 'VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
-                      <img src="/logos/visa.svg" alt="Visa" className="h-6" />
-                    </button>
-                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider === 'MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
-                      <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
-                    </button>
-                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider === 'MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
-                      <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
-                    </button>
-                  </div>
-                </div>
-
-                {paymentProvider !== 'MOMO' && (
-                  <div className="grid grid-cols-1 gap-4">
-                    {paymentProvider === 'VISA' && (
-                      <div>
-                        <Label htmlFor="issuingBank">Issuing Bank</Label>
-                        <select id="issuingBank" className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={selectedBank} onChange={(e) => setSelectedBank(e.target.value as any)}>
-                          <option>Bank of Kigali</option>
-                          <option>I&M Bank</option>
-                          <option>Equity Bank</option>
-                        </select>
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="cardHolder">Cardholder Name</Label>
-                      <Input id="cardHolder" placeholder="JOHN DOE" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="cardNumber">Card Number</Label>
-                      <Input id="cardNumber" inputMode="numeric" maxLength={19} placeholder="4111 1111 1111 1111" value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} required />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="expiry">Expiry (MM/YY)</Label>
-                        <Input id="expiry" placeholder="12/26" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} required />
-                      </div>
-                      <div>
-                        <Label htmlFor="cvc">Security Code</Label>
-                        <Input id="cvc" placeholder="123" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} required />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {paymentProvider === 'MOMO' && (
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <Label htmlFor="momoName">MoMo Account Name</Label>
-                      <Input id="momoName" placeholder="JOHN DOE" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="momoPhone">MoMo Phone Number</Label>
-                      <Input id="momoPhone" placeholder="07xx xxx xxx" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="momoRef">Payment Reference (optional)</Label>
-                      <Input id="momoRef" placeholder="eg. TRIP-2025-0001" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
-                    </div>
-                  </div>
-                )}
-
-                {/* Live total */}
-                {(() => {
-                  const participants = parseInt(booking.participants || '0') || 0;
-                  const total = participants * (tour.pricePerPerson || 0);
-                  return (
-                    <div className="bg-secondary/50 p-4 rounded-lg">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium">Total for {participants} participant{participants > 1 ? 's' : ''}</p>
-                          <p className="text-sm text-muted-foreground">Rate: {tour.currency} {tour.pricePerPerson.toLocaleString()} per person. Includes all taxes and fees.</p>
-                        </div>
-                        <p className="text-xl font-bold">{tour.currency} {total.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <DialogFooter>
-                  <Button type="submit" className="w-full" disabled={isPaying}>
-                    {isPaying ? 'Processing...' : 'Confirm and Pay'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            )}
-            {success && (
-              <div className="text-center space-y-6 py-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-                  <Check className="h-6 w-6 text-green-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
-                <div className="space-y-2">
-                  <p>Your <span className="font-semibold">{tour.name}</span> booking is confirmed.</p>
-                  <p className="text-muted-foreground">Check your email for confirmation details.</p>
-                </div>
-                <div className="pt-4">
-                  <Button className="w-full" onClick={() => setModalOpen(false)}>
-                    Close
-                  </Button>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-      </Dialog>
       
       <EmailVerificationReminder 
         isOpen={showVerificationReminder}
