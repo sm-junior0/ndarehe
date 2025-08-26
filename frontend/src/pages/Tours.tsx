@@ -161,57 +161,6 @@ const Tours = () => {
         </div>
       )}
 
-      {/* Search and Filters */}
-      <div className="bg-gradient-to-r from-green-50 to-white border border-green-200 rounded-2xl p-6 mb-8 shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-green-600" />
-            <Input
-              placeholder="Search tours..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
-            />
-          </div>
-
-          <Select value={selectedType} onValueChange={setSelectedType}>
-            <SelectTrigger className="border-green-200 focus:border-green-500 focus:ring-green-500">
-              <SelectValue placeholder="Tour Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {tourTypes.map(type => (
-                <SelectItem key={type} value={type}>{type.replace('_', ' ')}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="border-green-200 focus:border-green-500 focus:ring-green-500">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            onClick={() => {
-              setSearchTerm("");
-              setSelectedType("all");
-              setSelectedCategory("all");
-            }}
-            variant="outline"
-            className="border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
-          >
-            Clear Filters
-          </Button>
-        </div>
-      </div>
-
 
       {/* Tours Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
