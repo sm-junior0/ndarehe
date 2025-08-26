@@ -138,11 +138,11 @@ const UserDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching bookings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load bookings",
-        variant: "destructive",
-      });
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to load bookings",
+      //   variant: "destructive",
+      // });
     } finally {
       setBookingsLoading(false);
     }
