@@ -12,7 +12,7 @@ import { specs } from './config/swagger';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
-import { testConnection } from './config/database';
+// import { testConnection } from './config/database';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -258,8 +258,8 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     // Test database connection
-    await testConnection();
-    console.log('✅ Database connection established');
+    // await testConnection();
+    // console.log('✅ Database connection established');
 
     // Start server
     app.listen(PORT, () => {
