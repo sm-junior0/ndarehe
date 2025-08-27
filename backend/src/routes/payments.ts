@@ -324,17 +324,14 @@ router.get("/verify", async (req, res) => {
         });
       }
 
-      const redirectUrl = process.env.NODE_ENV === 'production' 
-        ? `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`
-        : `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`;
+      // Always redirect to the deployed frontend URL, not localhost
+      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/success?bookingId=${bookingId}`;
       
       console.log(`[Payment] Redirecting to: ${redirectUrl}`);
       return res.redirect(redirectUrl);
     } else {
       console.log(`[Payment] ❌ Payment verification failed for tx_ref: ${tx_ref}`);
-      const redirectUrl = process.env.NODE_ENV === 'production'
-        ? `${process.env.BASE_URL}/booking/failed`
-        : `http://localhost:5173/booking/failed`;
+      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/failed`;
       return res.redirect(redirectUrl);
     }
   } catch (error) {
@@ -463,17 +460,14 @@ router.get("/flutterwave/verify", async (req, res) => {
         });
       }
       
-      const redirectUrl = process.env.NODE_ENV === 'production' 
-        ? `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`
-        : `http://localhost:5173/booking/success?bookingId=${bookingId}`;
+      // Always redirect to the deployed frontend URL, not localhost
+      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/success?bookingId=${bookingId}`;
       
       console.log(`[Payment] Redirecting to: ${redirectUrl}`);
       return res.redirect(redirectUrl);
     } else {
       console.log(`[Payment] ❌ Flutterwave verification failed for tx_ref: ${tx_ref}`);
-      const redirectUrl = process.env.NODE_ENV === 'production'
-        ? `${process.env.BASE_URL}/booking/failed`
-        : `http://localhost:5173/booking/failed`;
+      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/failed`;
       return res.redirect(redirectUrl);
     }
   } catch (error) {

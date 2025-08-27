@@ -179,16 +179,14 @@ app.get('/verify-email', async (req, res) => {
 
       console.log('Email verified successfully for user:', user.email);
 
-      // Redirect to frontend with success status
-      const frontendUrl = process.env.FRONTEND_URL || 
-        (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
+      // Always redirect to the deployed frontend URL, not localhost
+      const frontendUrl = process.env.FRONTEND_URL || 'https://ndarehe.vercel.app';
       
       return res.redirect(`${frontendUrl}/verify-email?status=success`);
     } catch (error) {
       console.error('Email verification failed:', error);
       
-      const frontendUrl = process.env.FRONTEND_URL || 
-        (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
+      const frontendUrl = process.env.FRONTEND_URL || 'https://ndarehe.vercel.app';
       
       if (error instanceof jwt.JsonWebTokenError) {
         return res.redirect(`${frontendUrl}/verify-email?status=error&message=Invalid or expired verification token`);
@@ -200,8 +198,7 @@ app.get('/verify-email', async (req, res) => {
 
   // If status is present without token, redirect to frontend
   if (status) {
-    const frontendUrl = process.env.FRONTEND_URL || 
-      (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
+    const frontendUrl = process.env.FRONTEND_URL || 'https://ndarehe.vercel.app';
     
     return res.redirect(`${frontendUrl}/verify-email?status=${encodeURIComponent(status)}`);
   }
