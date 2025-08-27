@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
-import { transportationApi, bookingsApi, paymentsApi } from "@/lib/api";
+import { transportationApi, bookingsApi, paymentsApi, flutterwaveApi } from "@/lib/api";
 
 interface Transportation {
   id: string;
@@ -75,6 +75,10 @@ const Transportation = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  const [flutterwaveLink, setFlutterwaveLink] = useState<string | null>(null);
+  const [txRef, setTxRef] = useState<string | null>(null);
+
   // Fetch transportation from API
   const fetchTransportation = async () => {
     try {
@@ -133,6 +137,9 @@ const Transportation = () => {
       serviceType: "trip"
     });
     setSuccess(false);
+    setPaymentVerified(false);
+    setTxRef(null);
+    setFlutterwaveLink(null);
     setModalOpen(true);
   };
 
@@ -147,6 +154,17 @@ const Transportation = () => {
     }
 
     try {
+      // Validate payment selection
+      if (paymentProvider === 'MOMO') {
+        if (!momo.phone || !momo.name) {
+          throw new Error('Please provide your MoMo number and name.');
+        }
+      } else {
+        if (!card.holder || !card.number || !card.expiry || !card.cvc) {
+          throw new Error('Please fill in all card fields.');
+        }
+      }
+
       const response = await bookingsApi.create({
         serviceType: "TRANSPORTATION",
         serviceId: selectedService.id,
@@ -160,30 +178,30 @@ const Transportation = () => {
         const isHour = booking.serviceType === 'hour';
         const amount = isHour ? (selectedService.pricePerHour || selectedService.pricePerTrip) : selectedService.pricePerTrip;
 
-        // Validate payment fields
-        if (paymentProvider === 'MOMO') {
-          if (!momo.phone || !momo.name) {
-            throw new Error('Please provide your MoMo number and name.');
-          }
-        } else {
-          if (!card.holder || !card.number || !card.expiry || !card.cvc) {
-            throw new Error('Please fill in all card fields.');
-          }
-        }
-
         setIsPaying(true);
-        const payRes = await paymentsApi.createSingle({
+
+        // Prepare customer for hosted pay
+        const customer = {
+          email: user?.email || 'guest@example.com',
+          name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
+          phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
+        } as { email: string; name: string; phonenumber?: string };
+
+        // Initialize Flutterwave Hosted Pay via backend
+        const initRes = await flutterwaveApi.init({
           bookingId: (response as any).data.booking.id,
           amount,
-          method: paymentProvider === 'MOMO' ? 'MOBILE_MONEY' : 'CARD',
           currency: selectedService.currency || 'RWF',
+          customer,
         });
 
-        if ((payRes as any).success) {
-          setSuccess(true);
-          toast({ title: 'Payment successful', description: 'Your booking has been confirmed.' });
+        if (initRes.success && initRes.link) {
+          setFlutterwaveLink(initRes.link);
+          if (initRes.tx_ref) setTxRef(initRes.tx_ref);
+          // Redirect same tab
+          window.location.href = initRes.link;
         } else {
-          throw new Error('Payment failed');
+          throw new Error(initRes.message || 'Failed to initiate payment');
         }
       } else {
         throw new Error("Booking failed");
@@ -191,7 +209,6 @@ const Transportation = () => {
     } catch (error: any) {
       console.error("Booking error:", error);
 
-      // Check if error is due to email verification
       if (error.message && error.message.includes("verify your email")) {
         setShowVerificationReminder(true);
       } else {
@@ -201,6 +218,29 @@ const Transportation = () => {
           variant: "destructive"
         });
       }
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const verifyPayment = async () => {
+    if (!txRef) {
+      toast({ title: 'Missing reference', description: 'Start payment first to get a transaction reference.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setIsPaying(true);
+      const data = await flutterwaveApi.verifyJson(txRef);
+      if (data.success && data.paid) {
+        setPaymentVerified(true);
+        toast({ title: 'Payment Verified', description: 'Your payment has been confirmed. You can now proceed.', variant: 'default' });
+      } else {
+        throw new Error('Payment not verified yet. Please complete the payment and try again.');
+      }
+    } catch (error: any) {
+      toast({ title: 'Verification Failed', description: error.message || 'Payment not verified', variant: 'destructive' });
+    } finally {
+      setIsPaying(false);
     }
   };
 
@@ -543,11 +583,83 @@ const Transportation = () => {
                 );
               })()}
 
-              <DialogFooter>
-                <Button type="submit" className="w-full" disabled={isPaying}>
-                  {isPaying ? 'Processing...' : 'Confirm and Pay'}
-                </Button>
-              </DialogFooter>
+              {/* Payment Actions */}
+              <div className="space-y-4">
+                {/* Step 1: Initiate Payment */}
+                <div className="space-y-2">
+                  <Button type="submit" className="w-full" disabled={isPaying}>
+                    {isPaying ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Processing...
+                      </div>
+                    ) : (
+                      `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Flutterwave)`
+                    )}
+                  </Button>
+                  {txRef && (
+                    <div className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
+                      Transaction Reference: {txRef}
+                    </div>
+                  )}
+                </div>
+
+                {/* Step 2: Verify Payment */}
+                {txRef && (
+                  <div className="space-y-2">
+                    <Button 
+                      type="button"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={verifyPayment}
+                      disabled={isPaying || paymentVerified}
+                    >
+                      {isPaying ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                          Verifying...
+                        </div>
+                      ) : paymentVerified ? (
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4" />
+                          Payment Verified
+                        </div>
+                      ) : (
+                        'Verify Payment'
+                      )}
+                    </Button>
+                    {!paymentVerified && (
+                      <div className="text-xs text-muted-foreground">
+                        After completing payment, click "Verify Payment" to confirm
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment Status */}
+                {paymentVerified && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <Check className="h-5 w-5" />
+                      <span className="font-medium">Payment Verified Successfully!</span>
+                    </div>
+                    <p className="text-sm text-green-600 mt-1">
+                      Your payment has been confirmed. You can now proceed with your booking.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm after verification */}
+              <Button 
+                type="button" 
+                className="w-full" 
+                disabled={!paymentVerified}
+                variant={paymentVerified ? "default" : "secondary"}
+                onClick={() => setSuccess(true)}
+              >
+                {paymentVerified ? 'Confirm and Continue' : 'Complete Payment First'}
+              </Button>
             </form>
           )}
           {selectedService && success && (

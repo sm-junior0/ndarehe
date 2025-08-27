@@ -10,7 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { bookingsApi, accommodationsApi, paymentsApi } from "@/lib/api";
+import { bookingsApi, accommodationsApi, paymentsApi, flutterwaveApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
 
@@ -157,6 +157,9 @@ const AccommodationDetails = () => {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
   const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  const [flutterwaveLink, setFlutterwaveLink] = useState<string | null>(null);
+  const [txRef, setTxRef] = useState<string | null>(null);
   const [card, setCard] = useState({
     holder: "",
     number: "",
@@ -210,17 +213,150 @@ const AccommodationDetails = () => {
     fetchAccommodation();
   }, [id]);
 
+
+    const handleFlutterwavePayment = async () => {
+    console.log('🔵 handleFlutterwavePayment called!');
+    console.log('🔵 accommodation:', accommodation);
+    console.log('🔵 booking:', booking);
+    console.log('🔵 paymentProvider:', paymentProvider);
+    
+    if (!accommodation) {
+      console.log('❌ No accommodation data');
+      return;
+    }
+
+    try {
+      console.log('🔵 Setting isPaying to true');
+      setIsPaying(true);
+
+      // Auth and validation
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
+        return;
+      }
+      if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
+        toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
+        return;
+      }
+
+      // Validate payment method specific fields
+      if (paymentProvider === 'MOMO') {
+        if (!momo.phone || !momo.name) {
+          toast({ title: 'Missing Information', description: 'Please provide your MoMo phone number and account name', variant: 'destructive' });
+          return;
+        }
+      }
+
+      // 1) Create booking (PENDING)
+      const bookingRes = await bookingsApi.create({
+        serviceType: 'ACCOMMODATION',
+        serviceId: accommodation.id,
+        startDate: booking.checkIn,
+        endDate: booking.checkOut,
+        numberOfPeople: parseInt(booking.guests || '1', 10),
+        specialRequests: booking.specialRequests || ''
+      });
+      if (!bookingRes.success) throw new Error('Failed to create booking');
+      const newBooking = bookingRes.data.booking;
+
+      // 2) Compute amount
+      const checkInDate = new Date(booking.checkIn);
+      const checkOutDate = new Date(booking.checkOut);
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
+      const nights = Math.max(1, rawNights);
+      const guests = parseInt(booking.guests) || 1;
+      const amount = nights * guests * (accommodation.pricePerNight || 0);
+
+      // 3) Prepare customer (Flutterwave Hosted Pay)
+      const customer = {
+        email: user?.email || 'guest@example.com',
+        name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
+        phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
+      } as { email: string; name: string; phonenumber?: string };
+
+      // 4) Initialize Flutterwave session via backend
+      const initRes = await flutterwaveApi.init({
+        bookingId: newBooking.id,
+        amount,
+        currency: accommodation.currency || 'RWF',
+        customer,
+      });
+
+      if (initRes.success && initRes.link) {
+        setFlutterwaveLink(initRes.link);
+        if (initRes.tx_ref) setTxRef(initRes.tx_ref);
+        
+        // Log the link for visibility (will look like https://checkout.flutterwave.com/v3/hosted/pay/flwlnk-...)
+        console.log('[Flutterwave] Hosted Pay link:', initRes.link, 'tx_ref:', initRes.tx_ref);
+        
+        // Open Flutterwave payment page in same tab
+        window.location.href = initRes.link;
+        
+        toast({
+          title: 'Payment Page Opened',
+          description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
+          variant: 'default',
+        });
+      } else {
+        throw new Error(initRes.message || 'Failed to initiate payment');
+      }
+    } catch (error: any) {
+      console.error('Payment initialization error:', error);
+      toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const verifyPayment = async () => {
+    if (!txRef) {
+      toast({ title: 'Missing reference', description: 'Start payment first to get a transaction reference.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      setIsPaying(true);
+      console.log('[Payment] Verifying payment for tx_ref:', txRef);
+      
+      const data = await flutterwaveApi.verifyJson(txRef);
+
+      if (data.success && data.paid) {
+        setPaymentVerified(true);
+        toast({
+          title: 'Payment Verified Successfully!',
+          description: 'Your payment has been confirmed. You can now proceed with your booking.',
+          variant: 'default'
+        });
+        console.log('[Payment] ✅ Payment verified successfully');
+      } else {
+        throw new Error('Payment not verified yet. Please complete the payment and try again.');
+      }
+    } catch (error: any) {
+      console.error('Payment verification error:', error);
+      toast({
+        title: 'Verification Failed',
+        description: error.message || 'Payment not verified. Please complete the payment first.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
   const handleBookingAndPayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!accommodation) return;
 
+    if (!paymentVerified) {
+      toast({ title: 'Payment Required', description: 'Please complete and verify your payment first.', variant: 'destructive' });
+      return;
+    }
+
     if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
-      toast({
-        title: "Invalid Dates",
-        description: "Check-out date must be after check-in date",
-        variant: "destructive"
-      });
+      toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
       return;
     }
 
@@ -231,82 +367,17 @@ const AccommodationDetails = () => {
 
     try {
       setSubmitting(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to book this accommodation",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const response = await bookingsApi.create({
-        serviceType: "ACCOMMODATION",
-        serviceId: accommodation.id,
-        startDate: booking.checkIn,
-        endDate: booking.checkOut,
-        numberOfPeople: parseInt(booking.guests),
-        specialRequests: booking.specialRequests || ""
+      // At this point, the backend verification endpoint already confirmed the booking and updated payment/booking status.
+      setSuccess(true);
+      toast({ 
+        title: 'Booking Confirmed!', 
+        description: 'Your payment was verified and booking is confirmed. Check your email for details.',
+        variant: 'default'
       });
-
-      if (response.success) {
-        const checkInDate = new Date(booking.checkIn);
-        const checkOutDate = new Date(booking.checkOut);
-        const msPerDay = 1000 * 60 * 60 * 24;
-        const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
-        const nights = Math.max(1, rawNights);
-        const guests = parseInt(booking.guests) || 1;
-        const amount = nights * guests * accommodation.pricePerNight;
-
-        if (paymentProvider === 'MOMO') {
-          if (!momo.phone || !momo.name) {
-            throw new Error('Please provide your MoMo number and name.');
-          }
-        } else {
-          if (!card.holder || !card.number || !card.expiry || !card.cvc) {
-            throw new Error('Please fill in all card fields.');
-          }
-        }
-
-        setIsPaying(true);
-        const payRes = await paymentsApi.createSingle({
-          bookingId: response.data.booking.id,
-          amount,
-          method: paymentProvider === 'MOMO' ? 'MOBILE_MONEY' : 'CARD',
-          currency: accommodation.currency || 'RWF',
-        });
-
-        if (payRes.success) {
-          setSuccess(true);
-          toast({ title: 'Payment successful', description: 'Your booking has been confirmed.' });
-        } else {
-          throw new Error('Payment failed');
-        }
-      } else {
-        throw new Error("Booking failed");
-      }
-    } catch (error: unknown) {
-      console.error("Booking error:", error);
-
-      let errorMessage = "There was an error processing your booking. Please try again.";
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (error && typeof error === "object" && "status" in error) {
-        const statusError = error as { status: number };
-        if (statusError.status === 400) {
-          errorMessage = "Please check your booking details and try again.";
-        } else if (statusError.status === 401) {
-          errorMessage = "Please log in to complete your booking.";
-        }
-      }
-
-      toast({
-        title: "Booking Failed",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      console.log('[Booking] ✅ Booking confirmed successfully');
+    } catch (error: any) {
+      console.error('Booking confirmation error:', error);
+      toast({ title: 'Confirmation Failed', description: error.message || 'Unable to finalize booking', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -545,13 +616,13 @@ const AccommodationDetails = () => {
         </div>
       </div>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+<Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/30">
-          {!success && (
+          {!success ? (
             <form onSubmit={handleBookingAndPayment} className="space-y-4">
               <DialogHeader>
                 <div className="flex items-start gap-4">
-                  {accommodation.images && accommodation.images.length > 0 && (
+                  {accommodation.images?.length > 0 && (
                     <img
                       src={accommodation.images[0]}
                       alt={accommodation.name}
@@ -567,13 +638,15 @@ const AccommodationDetails = () => {
                       </div>
                       <div className="flex items-center mt-1">
                         <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                        {accommodation.averageRating} • {accommodation.currency} {accommodation.pricePerNight.toLocaleString()}/night per person
+                        {accommodation.averageRating} • {accommodation.currency}{" "}
+                        {accommodation.pricePerNight.toLocaleString()}/night per person
                       </div>
                     </DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
 
+              {/* Booking Dates */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="checkIn">Check-In Date</Label>
@@ -599,12 +672,13 @@ const AccommodationDetails = () => {
                 </div>
               </div>
 
+              {/* Guests */}
               <div>
                 <Label htmlFor="guests">Number of Guests</Label>
                 <Input
                   id="guests"
                   type="number"
-                  min="1"
+                  min={1}
                   max={accommodation.maxGuests}
                   value={booking.guests}
                   onChange={e => setBooking({ ...booking, guests: e.target.value })}
@@ -613,148 +687,207 @@ const AccommodationDetails = () => {
                 />
               </div>
 
+              {/* Special Requests */}
               <div className="mb-4">
                 <Label htmlFor="specialRequests">Special Requests</Label>
                 <textarea
                   id="specialRequests"
                   value={booking.specialRequests}
-                  onChange={(e) => setBooking({ ...booking, specialRequests: e.target.value })}
+                  onChange={e => setBooking({ ...booking, specialRequests: e.target.value })}
                   className="flex h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   placeholder="Any special requirements..."
                 />
               </div>
 
+              {/* Payment Method */}
               <div className="space-y-2">
                 <h4 className="font-semibold">Payment Method</h4>
                 <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider==='VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
-                    <img src="/logos/visa.svg" alt="Visa" className="h-6" />
-                  </button>
-                  <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider==='MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
-                    <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
-                  </button>
-                  <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider==='MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
-                    <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
-                  </button>
+                  {["VISA", "MASTERCARD", "MOMO"].map(provider => (
+                    <button
+                      key={provider}
+                      type="button"
+                      onClick={() => setPaymentProvider(provider as "VISA" | "MASTERCARD" | "MOMO")}
+                      className={`rounded border p-1 transition ${paymentProvider === provider ? "ring-2 ring-green-600" : "border-input"}`}
+                      aria-label={`Pay with ${provider}`}
+                    >
+                      <img
+                        src={`/logos/${provider.toLowerCase()}.svg`}
+                        alt={provider}
+                        className="h-6"
+                      />
+                    </button>
+                  ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
                   Unit price: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night
                 </p>
+                <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                  💳 You'll be redirected to Flutterwave's secure payment page to complete your transaction.
+                </p>
               </div>
 
-              {paymentProvider !== 'MOMO' && (
+              {/* Card / MoMo Inputs */}
+              {paymentProvider !== "MOMO" ? (
                 <div className="grid grid-cols-1 gap-4">
-                  {paymentProvider === 'VISA' && (
+                  {paymentProvider === "VISA" && (
                     <div>
                       <Label htmlFor="issuingBank">Issuing Bank</Label>
-                      <select id="issuingBank" className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={selectedBank} onChange={(e) => setSelectedBank(e.target.value as 'Bank of Kigali' | "I&M Bank" | 'Equity Bank')}>
+                      <select
+                        id="issuingBank"
+                        className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                        value={selectedBank}
+                        onChange={e => setSelectedBank(e.target.value as 'Bank of Kigali' | "I&M Bank" | 'Equity Bank')}
+                      >
                         <option>Bank of Kigali</option>
                         <option>I&M Bank</option>
                         <option>Equity Bank</option>
                       </select>
                     </div>
                   )}
-                  <div>
-                    <Label htmlFor="cardHolder">Cardholder Name</Label>
-                    <Input id="cardHolder" placeholder="JOHN DOE" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="cardNumber">Card Number</Label>
-                    <Input id="cardNumber" inputMode="numeric" maxLength={19} placeholder="4111 1111 1111 1111" value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} required />
-                  </div>
+                  <Input id="cardHolder" placeholder="Cardholder Name" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} />
+                  <Input id="cardNumber" placeholder="Card Number" maxLength={19} value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} />
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="expiry">Expiry (MM/YY)</Label>
-                      <Input id="expiry" placeholder="12/26" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="cvc">Security Code</Label>
-                      <Input id="cvc" placeholder="123" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} required />
-                    </div>
+                    <Input id="expiry" placeholder="MM/YY" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} />
+                    <Input id="cvc" placeholder="CVC" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} />
                   </div>
                 </div>
-              )}
-
-              {paymentProvider === 'MOMO' && (
+              ) : (
                 <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="momoName">MoMo Account Name</Label>
-                    <Input id="momoName" placeholder="JOHN DOE" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="momoPhone">MoMo Phone Number</Label>
-                    <Input id="momoPhone" placeholder="07xx xxx xxx" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="momoRef">Payment Reference (optional)</Label>
-                    <Input id="momoRef" placeholder="eg. TRIP-2025-0001" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
-                  </div>
+                  <Input id="momoName" placeholder="MoMo Account Name" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} />
+                  <Input id="momoPhone" placeholder="MoMo Phone Number" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} />
+                  <Input id="momoRef" placeholder="Payment Reference (optional)" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
                 </div>
               )}
 
+              {/* Total Calculation */}
               {(() => {
                 const hasDates = booking.checkIn && booking.checkOut;
-                let nights = 0;
-                if (hasDates) {
-                  const ci = new Date(booking.checkIn).getTime();
-                  const co = new Date(booking.checkOut).getTime();
-                  nights = Math.max(1, Math.ceil((co - ci) / (1000*60*60*24)));
-                }
-                const guests = parseInt(booking.guests || '1') || 1;
-                const total = (nights || 0) * guests * (accommodation.pricePerNight || 0);
-                
+                const nights = hasDates ? Math.max(1, Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24))) : 0;
+                const guests = parseInt(booking.guests || "1", 10) || 1;
+                const total = nights * guests * (accommodation.pricePerNight || 0);
                 return (
                   <div className="bg-secondary/50 p-4 rounded-lg">
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="font-medium">
-                          {nights > 0 
-                            ? `Total for ${guests} guest${guests>1?'s':''} over ${nights} night${nights>1?'s':''}`
-                            : `Total for ${guests} guest${guests>1?'s':''}`
-                          }
+                          {nights > 0 ? `Total for ${guests} guest${guests > 1 ? "s" : ""} over ${nights} night${nights > 1 ? "s" : ""}` : `Total for ${guests} guest${guests > 1 ? "s" : ""}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {nights > 0 
-                            ? `Rate: ${accommodation.currency} ${accommodation.pricePerNight.toLocaleString()} per person per night. Includes all taxes and fees.`
-                            : `Rate: ${accommodation.currency} ${accommodation.pricePerNight.toLocaleString()} per person per night. Select dates to see total.`
-                          }
+                          Rate: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night{nights > 0 ? ". Includes all taxes and fees." : ". Select dates to see total."}
                         </p>
                       </div>
                       <div className="text-right">
-                        {nights > 0 ? (
-                          <p className="text-xl font-bold">{accommodation.currency} {total.toLocaleString()}</p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Select dates</p>
-                        )}
+                        {nights > 0 ? <p className="text-xl font-bold">{accommodation.currency} {total.toLocaleString()}</p> : <p className="text-sm text-muted-foreground">Select dates</p>}
                       </div>
                     </div>
                   </div>
                 );
               })()}
 
-              <DialogFooter>
-                <Button type="submit" className="w-full" disabled={isPaying}>
-                  {isPaying ? 'Processing...' : 'Confirm and Pay'}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
+              {/* Payment Actions */}
+              <div className="space-y-4">
+                {/* Step 1: Initiate Payment */}
+                <div className="space-y-2">
+                  <Button 
+                    type="button" 
+                    className="w-full" 
+                    onClick={() => {
+                      console.log('🔴 Button clicked!');
+                      handleFlutterwavePayment();
+                    }} 
+                    disabled={isPaying}
+                  >
+                    {isPaying ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Processing...
+                      </div>
+                    ) : (
+                      `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Flutterwave)`
+                    )}
+                  </Button>
+                  
+                  {txRef && (
+                    <div className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
+                      Transaction Reference: {txRef}
+                    </div>
+                  )}
+                </div>
 
-          {success && (
+                {/* Step 2: Verify Payment */}
+                {txRef && (
+                  <div className="space-y-2">
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
+                      className="w-full"
+                      onClick={verifyPayment} 
+                      disabled={isPaying || paymentVerified}
+                    >
+                      {isPaying ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                          Verifying...
+                        </div>
+                      ) : paymentVerified ? (
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4" />
+                          Payment Verified
+                        </div>
+                      ) : (
+                        'Verify Payment'
+                      )}
+                    </Button>
+                    
+                    {!paymentVerified && txRef && (
+                      <div className="text-xs text-muted-foreground">
+                        After completing payment, click "Verify Payment" to confirm
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Payment Status */}
+                {paymentVerified && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <Check className="h-5 w-5" />
+                      <span className="font-medium">Payment Verified Successfully!</span>
+                    </div>
+                    <p className="text-sm text-green-600 mt-1">
+                      Your payment has been confirmed. You can now proceed with your booking.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm after verification */}
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={!paymentVerified || submitting}
+                variant={paymentVerified ? "default" : "secondary"}
+              >
+                {submitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Confirming...
+                  </div>
+                ) : (
+                  paymentVerified ? 'Confirm and Continue' : 'Complete Payment First'
+                )}
+              </Button>
+            </form>
+          ) : (
             <div className="text-center space-y-6 py-4">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
                 <Check className="h-6 w-6 text-green-600" />
               </div>
               <h2 className="text-2xl font-bold text-green-600">Payment Successful!</h2>
-              <div className="space-y-2">
-                <p>Your stay at <span className="font-semibold">{accommodation.name}</span> is confirmed.</p>
-                <p className="text-muted-foreground">Check your email for confirmation details.</p>
-              </div>
-              <div className="pt-4">
-                <Button className="w-full" onClick={() => setModalOpen(false)}>
-                  Close
-                </Button>
-              </div>
+              <p>Your stay at <span className="font-semibold">{accommodation.name}</span> is confirmed.</p>
+              <p className="text-muted-foreground">Check your email for confirmation details.</p>
+              <Button className="w-full" onClick={() => setModalOpen(false)}>Close</Button>
             </div>
           )}
         </DialogContent>
