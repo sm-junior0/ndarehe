@@ -318,7 +318,8 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
     }).catch(() => {});
 
     // Send confirmation email asynchronously (do not block response)
-    {
+    // IMPORTANT: For accommodation bookings, defer confirmation email until payment verification
+    if (serviceType !== 'ACCOMMODATION') {
       const serviceName = service.name;
       const payload = {
         id: booking.id,
@@ -351,6 +352,7 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
     next(error);
   }
 });
+
 
 // @desc    Get user bookings
 // @route   GET /api/bookings
@@ -469,6 +471,7 @@ router.get('/:id', protect, async (req: AuthRequest, res: Response, next: NextFu
     next(error);
   }
 });
+
 
 // @desc    Cancel booking
 // @route   PUT /api/bookings/:id/cancel
