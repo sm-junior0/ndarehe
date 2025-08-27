@@ -226,17 +226,40 @@ const handleFlutterwavePayment = async () => {
   try {
     setIsPaying(true);
 
-    // Validate dates first
+    // Auth and validation
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
+      return;
+    }
+    
     if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
-      toast({ 
-        title: 'Invalid Dates', 
-        description: 'Check-out date must be after check-in date', 
-        variant: 'destructive' 
-      });
+      toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
       return;
     }
 
-    // Calculate amount
+    // Validate payment method specific fields
+    if (paymentProvider === 'MOMO') {
+      if (!momo.phone || !momo.name) {
+        toast({ title: 'Missing Information', description: 'Please provide your MoMo phone number and account name', variant: 'destructive' });
+        return;
+      }
+    }
+
+    // 1) Create booking (PENDING)
+    const bookingRes = await bookingsApi.create({
+      serviceType: 'ACCOMMODATION',
+      serviceId: accommodation.id,
+      startDate: booking.checkIn,
+      endDate: booking.checkOut,
+      numberOfPeople: parseInt(booking.guests || '1', 10),
+      specialRequests: booking.specialRequests || ''
+    });
+    
+    if (!bookingRes.success) throw new Error('Failed to create booking');
+    const newBooking = bookingRes.data.booking;
+
+    // 2) Compute amount
     const checkInDate = new Date(booking.checkIn);
     const checkOutDate = new Date(booking.checkOut);
     const msPerDay = 1000 * 60 * 60 * 24;
@@ -245,28 +268,19 @@ const handleFlutterwavePayment = async () => {
     const guests = parseInt(booking.guests) || 1;
     const amount = nights * guests * (accommodation.pricePerNight || 0);
 
-    // Prepare customer data
+    // 3) Prepare customer (Flutterwave Hosted Pay)
     const customer = {
       email: user?.email || 'guest@example.com',
       name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
       phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
     };
 
-    console.log('🟡 Initializing Flutterwave payment with amount:', amount);
-    
-    // Initialize Flutterwave payment directly (bypass booking creation)
+    // 4) Initialize Flutterwave session via backend
     const initRes = await flutterwaveApi.init({
+      bookingId: newBooking.id,
       amount,
       currency: accommodation.currency || 'RWF',
       customer,
-      // Add meta data for later booking creation
-      meta: {
-        accommodationId: accommodation.id,
-        checkIn: booking.checkIn,
-        checkOut: booking.checkOut,
-        guests: parseInt(booking.guests || '1', 10),
-        specialRequests: booking.specialRequests || ''
-      }
     });
 
     if (initRes.success && initRes.link) {
@@ -279,8 +293,8 @@ const handleFlutterwavePayment = async () => {
       window.location.href = initRes.link;
       
       toast({
-        title: 'Redirecting to Payment',
-        description: 'You are being redirected to complete your payment',
+        title: 'Payment Page Opened',
+        description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
         variant: 'default',
       });
     } else {
@@ -288,97 +302,84 @@ const handleFlutterwavePayment = async () => {
     }
   } catch (error: any) {
     console.error('Payment initialization error:', error);
-    toast({ 
-      title: 'Payment Error', 
-      description: error.message || 'Failed to initiate payment', 
-      variant: 'destructive' 
-    });
+    toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
   } finally {
     setIsPaying(false);
   }
 };
 
-const verifyPayment = async () => {
-  if (!txRef) {
-    toast({ 
-      title: 'Missing reference', 
-      description: 'Start payment first to get a transaction reference.', 
-      variant: 'destructive' 
-    });
-    return;
-  }
+  const verifyPayment = async () => {
+    if (!txRef) {
+      toast({ title: 'Missing reference', description: 'Start payment first to get a transaction reference.', variant: 'destructive' });
+      return;
+    }
 
-  try {
-    setIsPaying(true);
-    console.log('[Payment] Verifying payment for tx_ref:', txRef);
-    
-    // Check if payment was successful
-    const response = await fetch(`/api/payments/flutterwave/verify-json?tx_ref=${txRef}`);
-    const data = await response.json();
-    
-    if (data.success && data.paid) {
-      setPaymentVerified(true);
-      setSuccess(true); // Mark as successful
+    try {
+      setIsPaying(true);
+      console.log('[Payment] Verifying payment for tx_ref:', txRef);
       
+      const data = await flutterwaveApi.verifyJson(txRef);
+
+      if (data.success && data.paid) {
+        setPaymentVerified(true);
+        toast({
+          title: 'Payment Verified Successfully!',
+          description: 'Your payment has been confirmed. You can now proceed with your booking.',
+          variant: 'default'
+        });
+        console.log('[Payment] ✅ Payment verified successfully');
+      } else {
+        throw new Error('Payment not verified yet. Please complete the payment and try again.');
+      }
+    } catch (error: any) {
+      console.error('Payment verification error:', error);
       toast({
-        title: 'Payment Verified Successfully!',
-        description: 'Your booking has been confirmed. Check your email for details.',
+        title: 'Verification Failed',
+        description: error.message || 'Payment not verified. Please complete the payment first.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const handleBookingAndPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!accommodation) return;
+
+    if (!paymentVerified) {
+      toast({ title: 'Payment Required', description: 'Please complete and verify your payment first.', variant: 'destructive' });
+      return;
+    }
+
+    if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
+      toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
+      return;
+    }
+
+    if (user && !user.isVerified) {
+      setShowVerificationReminder(true);
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      // At this point, the backend verification endpoint already confirmed the booking and updated payment/booking status.
+      setSuccess(true);
+      toast({ 
+        title: 'Booking Confirmed!', 
+        description: 'Your payment was verified and booking is confirmed. Check your email for details.',
         variant: 'default'
       });
-      
-      console.log('[Payment] ✅ Payment verified successfully');
-    } else {
-      throw new Error(data.message || 'Payment not verified yet');
+      console.log('[Booking] ✅ Booking confirmed successfully');
+    } catch (error: any) {
+      console.error('Booking confirmation error:', error);
+      toast({ title: 'Confirmation Failed', description: error.message || 'Unable to finalize booking', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
     }
-  } catch (error: any) {
-    console.error('Payment verification error:', error);
-    toast({
-      title: 'Verification Failed',
-      description: error.message || 'Payment not verified. Please complete the payment first.',
-      variant: 'destructive'
-    });
-  } finally {
-    setIsPaying(false);
-  }
-};
-
-  // const handleBookingAndPayment = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-
-  //   if (!accommodation) return;
-
-  //   if (!paymentVerified) {
-  //     toast({ title: 'Payment Required', description: 'Please complete and verify your payment first.', variant: 'destructive' });
-  //     return;
-  //   }
-
-  //   if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
-  //     toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
-  //     return;
-  //   }
-
-  //   if (user && !user.isVerified) {
-  //     setShowVerificationReminder(true);
-  //     return;
-  //   }
-
-  //   try {
-  //     setSubmitting(true);
-  //     // At this point, the backend verification endpoint already confirmed the booking and updated payment/booking status.
-  //     setSuccess(true);
-  //     toast({ 
-  //       title: 'Booking Confirmed!', 
-  //       description: 'Your payment was verified and booking is confirmed. Check your email for details.',
-  //       variant: 'default'
-  //     });
-  //     console.log('[Booking] ✅ Booking confirmed successfully');
-  //   } catch (error: any) {
-  //     console.error('Booking confirmation error:', error);
-  //     toast({ title: 'Confirmation Failed', description: error.message || 'Unable to finalize booking', variant: 'destructive' });
-  //   } finally {
-  //     setSubmitting(false);
-  //   }
-  // };
+  };
 
   if (loading) {
     const content = (
