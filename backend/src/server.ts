@@ -139,6 +139,7 @@ app.get('/health', (req, res) => {
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/accommodations', accommodationRoutes);
 app.use('/api/transportation', transportationRoutes);
