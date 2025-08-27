@@ -535,4 +535,65 @@ router.get("/flutterwave/verify-json", async (req, res) => {
   }
 });
 
+
+// Add to your payment routes
+router.get("/config", async (req, res) => {
+  try {
+    const config = {
+      flwPublicKey: process.env.FLW_PUBLIC_KEY ? "Set" : "Missing",
+      flwSecretKey: process.env.FLW_SECRET_KEY ? "Set" : "Missing",
+      backendUrl: process.env.BACKEND_URL || "Not set",
+      nodeEnv: process.env.NODE_ENV || "Not set",
+      baseUrl: process.env.BASE_URL || "Not set"
+    };
+    
+    console.log('Payment configuration check:', config);
+    
+    return res.json({
+      success: true,
+      message: "Configuration check",
+      data: config
+    });
+  } catch (error) {
+    console.error('Config check error:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Configuration check failed"
+    });
+  }
+});
+
+router.get("/test-flutterwave", async (req, res) => {
+  try {
+    // Test Flutterwave connection with a minimal request
+    const testPayload = {
+      tx_ref: `TEST-${Date.now()}`,
+      amount: 100,
+      currency: 'RWF',
+      customer: {
+        email: 'test@example.com',
+        name: 'Test User'
+      },
+      payment_options: 'card'
+    };
+
+    console.log('Testing Flutterwave connection with payload:', testPayload);
+    
+    const response = await initializePayment(testPayload);
+    
+    return res.json({
+      success: true,
+      message: "Flutterwave connection test successful",
+      data: response
+    });
+  } catch (error: any) {
+    console.error('Flutterwave test error:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Flutterwave connection test failed",
+      error: error.message
+    });
+  }
+});
+
 export default router; 

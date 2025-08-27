@@ -27,6 +27,7 @@ import tripPlanRoutes from './routes/tripPlans';
 import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
 
+
 dotenv.config();
 
 const app = express();

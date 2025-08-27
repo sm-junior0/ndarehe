@@ -214,101 +214,99 @@ const AccommodationDetails = () => {
   }, [id]);
 
 
-    const handleFlutterwavePayment = async () => {
-    console.log('🔵 handleFlutterwavePayment called!');
-    console.log('🔵 accommodation:', accommodation);
-    console.log('🔵 booking:', booking);
-    console.log('🔵 paymentProvider:', paymentProvider);
+// In your AccommodationDetails component
+const handleFlutterwavePayment = async () => {
+  console.log('🔵 handleFlutterwavePayment called!');
+  
+  if (!accommodation) {
+    console.log('❌ No accommodation data');
+    return;
+  }
+
+  try {
+    setIsPaying(true);
+
+    // Auth and validation
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
+      return;
+    }
     
-    if (!accommodation) {
-      console.log('❌ No accommodation data');
+    if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
+      toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
       return;
     }
 
-    try {
-      console.log('🔵 Setting isPaying to true');
-      setIsPaying(true);
-
-      // Auth and validation
-      const token = localStorage.getItem('token');
-      if (!token) {
-        toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
+    // Validate payment method specific fields
+    if (paymentProvider === 'MOMO') {
+      if (!momo.phone || !momo.name) {
+        toast({ title: 'Missing Information', description: 'Please provide your MoMo phone number and account name', variant: 'destructive' });
         return;
       }
-      if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
-        toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
-        return;
-      }
-
-      // Validate payment method specific fields
-      if (paymentProvider === 'MOMO') {
-        if (!momo.phone || !momo.name) {
-          toast({ title: 'Missing Information', description: 'Please provide your MoMo phone number and account name', variant: 'destructive' });
-          return;
-        }
-      }
-
-      // 1) Create booking (PENDING)
-      const bookingRes = await bookingsApi.create({
-        serviceType: 'ACCOMMODATION',
-        serviceId: accommodation.id,
-        startDate: booking.checkIn,
-        endDate: booking.checkOut,
-        numberOfPeople: parseInt(booking.guests || '1', 10),
-        specialRequests: booking.specialRequests || ''
-      });
-      if (!bookingRes.success) throw new Error('Failed to create booking');
-      const newBooking = bookingRes.data.booking;
-
-      // 2) Compute amount
-      const checkInDate = new Date(booking.checkIn);
-      const checkOutDate = new Date(booking.checkOut);
-      const msPerDay = 1000 * 60 * 60 * 24;
-      const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
-      const nights = Math.max(1, rawNights);
-      const guests = parseInt(booking.guests) || 1;
-      const amount = nights * guests * (accommodation.pricePerNight || 0);
-
-      // 3) Prepare customer (Flutterwave Hosted Pay)
-      const customer = {
-        email: user?.email || 'guest@example.com',
-        name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
-        phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
-      } as { email: string; name: string; phonenumber?: string };
-
-      // 4) Initialize Flutterwave session via backend
-      const initRes = await flutterwaveApi.init({
-        bookingId: newBooking.id,
-        amount,
-        currency: accommodation.currency || 'RWF',
-        customer,
-      });
-
-      if (initRes.success && initRes.link) {
-        setFlutterwaveLink(initRes.link);
-        if (initRes.tx_ref) setTxRef(initRes.tx_ref);
-        
-        // Log the link for visibility (will look like https://checkout.flutterwave.com/v3/hosted/pay/flwlnk-...)
-        console.log('[Flutterwave] Hosted Pay link:', initRes.link, 'tx_ref:', initRes.tx_ref);
-        
-        // Open Flutterwave payment page in same tab
-        window.location.href = initRes.link;
-        
-        toast({
-          title: 'Payment Page Opened',
-          description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
-          variant: 'default',
-        });
-      } else {
-        throw new Error(initRes.message || 'Failed to initiate payment');
-      }
-    } catch (error: any) {
-      console.error('Payment initialization error:', error);
-      toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
-    } finally {
-      setIsPaying(false);
     }
-  };
+
+    // 1) Create booking (PENDING)
+    const bookingRes = await bookingsApi.create({
+      serviceType: 'ACCOMMODATION',
+      serviceId: accommodation.id,
+      startDate: booking.checkIn,
+      endDate: booking.checkOut,
+      numberOfPeople: parseInt(booking.guests || '1', 10),
+      specialRequests: booking.specialRequests || ''
+    });
+    
+    if (!bookingRes.success) throw new Error('Failed to create booking');
+    const newBooking = bookingRes.data.booking;
+
+    // 2) Compute amount
+    const checkInDate = new Date(booking.checkIn);
+    const checkOutDate = new Date(booking.checkOut);
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
+    const nights = Math.max(1, rawNights);
+    const guests = parseInt(booking.guests) || 1;
+    const amount = nights * guests * (accommodation.pricePerNight || 0);
+
+    // 3) Prepare customer (Flutterwave Hosted Pay)
+    const customer = {
+      email: user?.email || 'guest@example.com',
+      name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
+      phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
+    };
+
+    // 4) Initialize Flutterwave session via backend
+    const initRes = await flutterwaveApi.init({
+      bookingId: newBooking.id,
+      amount,
+      currency: accommodation.currency || 'RWF',
+      customer,
+    });
+
+    if (initRes.success && initRes.link) {
+      setFlutterwaveLink(initRes.link);
+      if (initRes.tx_ref) setTxRef(initRes.tx_ref);
+      
+      console.log('[Flutterwave] Hosted Pay link:', initRes.link, 'tx_ref:', initRes.tx_ref);
+      
+      // Open Flutterwave payment page in same tab
+      window.location.href = initRes.link;
+      
+      toast({
+        title: 'Payment Page Opened',
+        description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
+        variant: 'default',
+      });
+    } else {
+      throw new Error(initRes.message || 'Failed to initiate payment');
+    }
+  } catch (error: any) {
+    console.error('Payment initialization error:', error);
+    toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
+  } finally {
+    setIsPaying(false);
+  }
+};
 
   const verifyPayment = async () => {
     if (!txRef) {

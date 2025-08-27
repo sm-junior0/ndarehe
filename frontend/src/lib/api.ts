@@ -398,24 +398,29 @@ export const paymentsApi = {
 // Flutterwave Hosted Pay API wrappers - Using LOCAL backend for payments
 export const flutterwaveApi = {
   init: async (payload: { bookingId: string; amount: number; currency: string; customer: { email: string; name: string; phonenumber?: string } }) => {
-    console.log('[Flutterwave API] 🚀 Starting payment initialization (LOCAL ONLY)');
-    console.log('[Flutterwave API] Using LOCAL backend URL:', LOCAL_PAYMENT_API_URL);
-    const response = await localPaymentApiRequest<{ success: boolean; link?: string; tx_ref?: string; message?: string }>(
+    console.log('[Flutterwave API] 🚀 Starting payment initialization');
+    
+    // Use the same API_BASE_URL as other endpoints
+    const response = await apiRequest<{ success: boolean; link?: string; tx_ref?: string; message?: string }>(
       '/payments/flutterwave',
       {
         method: 'POST',
         body: JSON.stringify(payload),
       }
     );
-    console.log('[Flutterwave API] ✅ Init response from local backend:', response);
+    
+    console.log('[Flutterwave API] ✅ Init response:', response);
     return response;
   },
+  
   verifyJson: async (tx_ref: string) => {
-    console.log('[Flutterwave API] 🔍 Verifying via LOCAL backend for tx_ref:', tx_ref);
-    const response = await localPaymentApiRequest<{ success: boolean; paid: boolean; bookingId?: string | null; message?: string }>(
+    console.log('[Flutterwave API] 🔍 Verifying payment for tx_ref:', tx_ref);
+    
+    const response = await apiRequest<{ success: boolean; paid: boolean; bookingId?: string | null; message?: string }>(
       `/payments/verify-json?tx_ref=${encodeURIComponent(tx_ref)}`
     );
-    console.log('[Flutterwave API] ✅ Verify response from local backend:', response);
+    
+    console.log('[Flutterwave API] ✅ Verify response:', response);
     return response;
   },
 };
