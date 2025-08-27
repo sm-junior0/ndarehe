@@ -326,7 +326,7 @@ router.get("/verify", async (req, res) => {
 
       const redirectUrl = process.env.NODE_ENV === 'production' 
         ? `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`
-        : `http://localhost:5173/booking/success?bookingId=${bookingId}`;
+        : `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`;
       
       console.log(`[Payment] Redirecting to: ${redirectUrl}`);
       return res.redirect(redirectUrl);
