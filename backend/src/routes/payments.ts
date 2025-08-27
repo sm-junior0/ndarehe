@@ -212,6 +212,7 @@ router.post("/flutterwave", async (req, res) => {
     };
 
     const response = await initializePayment(payload);
+    console.log('[Payment] Flutterwave response received:', JSON.stringify(response, null, 2));
 
     // Create payment record
     await prisma.payment.create({
@@ -227,13 +228,14 @@ router.post("/flutterwave", async (req, res) => {
     });
 
     // Extract payment link from Flutterwave response
+    // Flutterwave returns: { status: "success", message: "Hosted Link", data: { link: "..." } }
     const link = response?.data?.link || response?.link;
 
     if (!link) {
       console.error('[Payment] No payment link in Flutterwave response:', response);
       return res.status(500).json({ 
         success: false, 
-        message: "Failed to generate payment link" 
+        message: "Failed to generate payment link from Flutterwave" 
       });
     }
 
@@ -241,19 +243,24 @@ router.post("/flutterwave", async (req, res) => {
     
     return res.json({ 
       success: true, 
-      data: {
-        link, 
-        tx_ref,
-        amount,
-        currency
-      }
+      link, 
+      tx_ref,
+      amount,
+      currency
     });
   } catch (error) {
     console.error("Flutterwave payment initialization error:", error);
+    
+    let errorMessage = "Payment initialization failed";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null && 'message' in error) {
+      errorMessage = String((error as any).message);
+    }
+    
     return res.status(500).json({ 
       success: false, 
-      message: "Payment initialization failed",
-      error: process.env.NODE_ENV === 'development' && error && typeof error === 'object' && 'message' in error ? (error as any).message : undefined
+      message: errorMessage
     });
   }
 });

@@ -246,7 +246,7 @@ const handleFlutterwavePayment = async () => {
       }
     }
 
-    // 1) Create booking (PENDING)
+    // 1) Create booking (TEMPORARY status)
     const bookingRes = await bookingsApi.create({
       serviceType: 'ACCOMMODATION',
       serviceId: accommodation.id,
@@ -256,8 +256,13 @@ const handleFlutterwavePayment = async () => {
       specialRequests: booking.specialRequests || ''
     });
     
-    if (!bookingRes.success) throw new Error('Failed to create booking');
+    if (!bookingRes.success) {
+      console.error('Booking creation failed:', bookingRes);
+      throw new Error('Failed to create booking');
+    }
+    
     const newBooking = bookingRes.data.booking;
+    console.log('✅ Booking created successfully:', newBooking);
 
     // 2) Compute amount
     const checkInDate = new Date(booking.checkIn);
@@ -268,6 +273,8 @@ const handleFlutterwavePayment = async () => {
     const guests = parseInt(booking.guests) || 1;
     const amount = nights * guests * (accommodation.pricePerNight || 0);
 
+    console.log('💰 Payment details:', { nights, guests, amount, currency: accommodation.currency });
+
     // 3) Prepare customer (Flutterwave Hosted Pay)
     const customer = {
       email: user?.email || 'guest@example.com',
@@ -275,7 +282,17 @@ const handleFlutterwavePayment = async () => {
       phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
     };
 
+    console.log('👤 Customer details:', customer);
+
     // 4) Initialize Flutterwave session via backend
+    console.log('🚀 Initializing Flutterwave payment...');
+    console.log('📤 Sending payload to backend:', {
+      bookingId: newBooking.id,
+      amount,
+      currency: accommodation.currency || 'RWF',
+      customer,
+    });
+    
     const initRes = await flutterwaveApi.init({
       bookingId: newBooking.id,
       amount,
@@ -283,14 +300,21 @@ const handleFlutterwavePayment = async () => {
       customer,
     });
 
+    console.log('📡 Flutterwave init response:', initRes);
+
     if (initRes.success && initRes.link) {
-      setFlutterwaveLink(initRes.link);
-      if (initRes.tx_ref) setTxRef(initRes.tx_ref);
+      const paymentLink = initRes.link;
+      const transactionRef = initRes.tx_ref;
       
-      console.log('[Flutterwave] Hosted Pay link:', initRes.link, 'tx_ref:', initRes.tx_ref);
+      setFlutterwaveLink(paymentLink);
+      if (transactionRef) setTxRef(transactionRef);
+      
+      console.log('✅ Flutterwave payment initialized successfully');
+      console.log('🔗 Payment link:', paymentLink);
+      console.log('📝 Transaction ref:', transactionRef);
       
       // Open Flutterwave payment page in same tab
-      window.location.href = initRes.link;
+      window.location.href = paymentLink;
       
       toast({
         title: 'Payment Page Opened',
@@ -298,11 +322,13 @@ const handleFlutterwavePayment = async () => {
         variant: 'default',
       });
     } else {
-      throw new Error(initRes.message || 'Failed to initiate payment');
+      console.error('❌ Flutterwave init failed:', initRes);
+      throw new Error(initRes.message || 'Failed to initiate payment - no payment link received');
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment initialization error:', error);
-    toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
+    toast({ title: 'Payment Error', description: errorMessage, variant: 'destructive' });
   } finally {
     setIsPaying(false);
   }
@@ -331,11 +357,12 @@ const handleFlutterwavePayment = async () => {
       } else {
         throw new Error('Payment not verified yet. Please complete the payment and try again.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Payment verification error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Payment not verified. Please complete the payment first.';
       toast({
         title: 'Verification Failed',
-        description: error.message || 'Payment not verified. Please complete the payment first.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -373,9 +400,10 @@ const handleFlutterwavePayment = async () => {
         variant: 'default'
       });
       console.log('[Booking] ✅ Booking confirmed successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Booking confirmation error:', error);
-      toast({ title: 'Confirmation Failed', description: error.message || 'Unable to finalize booking', variant: 'destructive' });
+      const errorMessage = error instanceof Error ? error.message : 'Unable to finalize booking';
+      toast({ title: 'Confirmation Failed', description: errorMessage, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -733,13 +761,15 @@ const handleFlutterwavePayment = async () => {
                       <Label htmlFor="issuingBank">Issuing Bank</Label>
                       <select
                         id="issuingBank"
+                        name="issuingBank"
+                        aria-label="Select issuing bank"
                         className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                         value={selectedBank}
                         onChange={e => setSelectedBank(e.target.value as 'Bank of Kigali' | "I&M Bank" | 'Equity Bank')}
                       >
-                        <option>Bank of Kigali</option>
-                        <option>I&M Bank</option>
-                        <option>Equity Bank</option>
+                        <option value="Bank of Kigali">Bank of Kigali</option>
+                        <option value="I&M Bank">I&M Bank</option>
+                        <option value="Equity Bank">Equity Bank</option>
                       </select>
                     </div>
                   )}
