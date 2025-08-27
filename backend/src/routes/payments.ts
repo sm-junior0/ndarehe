@@ -151,46 +151,19 @@ const router = Router();
 // @access  Public (but should be protected in production)
 router.post("/flutterwave", async (req, res) => {
   try {
-    const { bookingId, amount, currency, customer } = req.body;
+    const { amount, currency, customer, meta } = req.body;
 
     // Validate required parameters
-    if (!bookingId || !amount || !currency || !customer) {
+    if (!amount || !currency || !customer) {
       return res.status(400).json({ 
         success: false, 
-        message: "Missing required parameters: bookingId, amount, currency, or customer" 
+        message: "Missing required parameters: amount, currency, or customer" 
       });
     }
 
-    
+    const tx_ref = `ACCOM-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Check if booking exists
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: { user: true }
-    });
-
-    if (!booking) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Booking not found" 
-      });
-    }
-
-    // Check if booking is already paid
-    const existingPayment = await prisma.payment.findFirst({
-      where: { bookingId, status: "COMPLETED" }
-    });
-
-    if (existingPayment) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Booking already paid" 
-      });
-    }
-
-    const tx_ref = `ACCOM-${bookingId}-${Date.now()}`;
-
-    console.log(`[Payment] Initializing Flutterwave payment for booking ${bookingId}`);
+    console.log(`[Payment] Initializing Flutterwave payment with tx_ref: ${tx_ref}`);
     
     const payload = {
       tx_ref,
@@ -204,27 +177,17 @@ router.post("/flutterwave", async (req, res) => {
       },
       customizations: {
         title: "Accommodation Booking",
-        description: `Payment for booking ${bookingId}`,
+        description: `Payment for accommodation booking`,
         logo: process.env.COMPANY_LOGO_URL || ""
       },
-      meta: { bookingId },
+      meta: {
+        ...meta, // Include accommodation details for later verification
+        tx_ref
+      },
       payment_options: "card, mobilemoney, banktransfer"
     };
 
     const response = await initializePayment(payload);
-
-    // Create payment record
-    await prisma.payment.create({
-      data: {
-        bookingId,
-        userId: booking.userId,
-        method: customer.phonenumber ? "MOBILE_MONEY" : "CARD",
-        transactionId: tx_ref,
-        amount: parseFloat(amount),
-        currency,
-        status: "PENDING"
-      }
-    });
 
     // Extract payment link from Flutterwave response
     const link = response?.data?.link || response?.link;
@@ -253,7 +216,7 @@ router.post("/flutterwave", async (req, res) => {
     return res.status(500).json({ 
       success: false, 
       message: "Payment initialization failed",
-      error: process.env.NODE_ENV === 'development' && error && typeof error === 'object' && 'message' in error ? (error as any).message : undefined
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -406,72 +369,86 @@ router.get("/verify-json", async (req, res) => {
 // Aliases under /flutterwave for compatibility with frontend and redirect_url
 router.get("/flutterwave/verify", async (req, res) => {
   const { tx_ref } = req.query;
-  if (!tx_ref || typeof tx_ref !== "string") {
-    return res.status(400).send("Transaction reference is required");
-  }
   
   try {
-    console.log(`[Payment] Flutterwave verify for tx_ref: ${tx_ref}`);
+    console.log(`[Payment] Verifying payment for tx_ref: ${tx_ref}`);
     
     const verification = await verifyPayment(tx_ref);
     const isPaid = verification?.status === "success" || 
-                   verification?.data?.status === "successful" ||
-                   verification?.data?.flw_ref ||
-                   verification?.data?.transaction_id;
-    const bookingId = verification?.data?.meta?.bookingId || verification?.meta?.bookingId;
-
-    if (isPaid && bookingId) {
-      console.log(`[Payment] ✅ Flutterwave verification successful for booking ${bookingId}`);
+                   verification?.data?.status === "successful";
+    
+    if (isPaid) {
+      const meta = verification?.data?.meta || verification?.meta;
       
-      // Update payment status
-      await prisma.payment.update({ 
-        where: { transactionId: tx_ref }, 
-        data: { status: "COMPLETED" } 
-      });
-      
-      // Update booking status
-      const updated = await prisma.booking.update({
-        where: { id: bookingId },
-        data: { status: "CONFIRMED", isConfirmed: true, confirmedAt: new Date() },
-        include: { user: true, accommodation: true, transportation: true, tour: true }
-      });
-      
-      // Send confirmation email ONLY after successful payment verification
-      if (updated.user) {
-        const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
-        const { subject, html } = emailTemplates.bookingConfirmation(
-          updated.user.firstName,
-          {
-            id: updated.id,
-            serviceName,
-            startDate: updated.startDate,
-            totalAmount: updated.totalAmount,
-            currency: updated.currency
-          }
-        );
+      if (meta && meta.accommodationId) {
+        console.log(`[Payment] ✅ Payment successful, creating booking for accommodation: ${meta.accommodationId}`);
         
-        console.log(`[Payment] 📧 Sending confirmation email to ${updated.user.email}`);
-        sendEmail(updated.user.email, subject, html).catch((e) => {
-          console.error('[Payment] ❌ Email send failed:', e);
+        // Create booking after successful payment
+        const booking = await prisma.booking.create({
+          data: {
+            serviceType: 'ACCOMMODATION',
+            serviceId: meta.accommodationId,
+            userId: meta.userId || null, // You might need to handle user association
+            startDate: new Date(meta.checkIn),
+            endDate: new Date(meta.checkOut),
+            numberOfPeople: meta.guests || 1,
+            specialRequests: meta.specialRequests || '',
+            status: 'CONFIRMED',
+            totalAmount: parseFloat(meta.amount) || 0,
+            currency: meta.currency || 'RWF'
+          },
+          include: { user: true, accommodation: true }
         });
+
+        // Create payment record
+        await prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            userId: booking.userId,
+            method: 'FLUTTERWAVE',
+            transactionId: tx_ref,
+            amount: parseFloat(meta.amount) || 0,
+            currency: meta.currency || 'RWF',
+            status: "COMPLETED"
+          }
+        });
+
+        // Send confirmation email
+        if (booking.user) {
+          const { subject, html } = emailTemplates.bookingConfirmation(
+            booking.user.firstName,
+            {
+              id: booking.id,
+              serviceName: booking.accommodation?.name || 'Accommodation',
+              startDate: booking.startDate,
+              totalAmount: booking.totalAmount,
+              currency: booking.currency
+            }
+          );
+          
+          sendEmail(booking.user.email, subject, html).catch(console.error);
+        }
+
+        const redirectUrl = process.env.NODE_ENV === 'production' 
+          ? `${process.env.BASE_URL}/booking/success?bookingId=${booking.id}`
+          : `http://localhost:5173/booking/success?bookingId=${booking.id}`;
+        
+        return res.redirect(redirectUrl);
       }
-      
-      const redirectUrl = process.env.NODE_ENV === 'production' 
-        ? `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`
-        : `http://localhost:5173/booking/success?bookingId=${bookingId}`;
-      
-      console.log(`[Payment] Redirecting to: ${redirectUrl}`);
-      return res.redirect(redirectUrl);
-    } else {
-      console.log(`[Payment] ❌ Flutterwave verification failed for tx_ref: ${tx_ref}`);
-      const redirectUrl = process.env.NODE_ENV === 'production'
-        ? `${process.env.BASE_URL}/booking/failed`
-        : `http://localhost:5173/booking/failed`;
-      return res.redirect(redirectUrl);
     }
+    
+    // If payment failed or no meta data
+    const redirectUrl = process.env.NODE_ENV === 'production'
+      ? `${process.env.BASE_URL}/booking/failed`
+      : `http://localhost:5173/booking/failed`;
+    return res.redirect(redirectUrl);
+    
   } catch (error) {
     console.error("Flutterwave verification error:", error);
-    return res.status(500).send("Verification failed");
+    const redirectUrl = process.env.NODE_ENV === 'production'
+      ? `${process.env.BASE_URL}/booking/error`
+      : `http://localhost:5173/booking/error`;
+    return res.redirect(redirectUrl);
   }
 });
 
