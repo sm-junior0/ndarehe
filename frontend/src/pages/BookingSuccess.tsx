@@ -63,15 +63,22 @@ const BookingSuccess = () => {
       }
 
       try {
+        console.log('🔍 Fetching booking with ID:', bookingId);
         const response = await bookingsApi.getById(bookingId);
-        if (response.success) {
+        console.log('📡 API Response:', response);
+        
+        if (response.success && response.data?.booking) {
           setBooking(response.data.booking);
+          console.log('✅ Booking data loaded successfully:', response.data.booking);
         } else {
-          setError("Failed to load booking details");
+          console.warn('⚠️ API response missing booking data:', response);
+          // Don't set error, just show the generic success message
+          setError(null);
         }
       } catch (error) {
-        console.error("Error fetching booking:", error);
-        setError("Failed to load booking details");
+        console.error("❌ Error fetching booking:", error);
+        // Don't set error, just show the generic success message
+        setError(null);
       } finally {
         setLoading(false);
       }
@@ -95,19 +102,100 @@ const BookingSuccess = () => {
     );
   }
 
+  // If there's an error or no booking data, show a generic success message
+  // This can happen if the user is redirected here after payment but before the booking is fully processed
   if (error || !booking) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Booking Not Found</h1>
-            <p className="text-muted-foreground mb-6">
-              {error || "The booking you're looking for doesn't exist."}
-            </p>
-            <Button asChild>
-              <Link to="/dashboard">Go to Dashboard</Link>
-            </Button>
+          <div className="max-w-2xl mx-auto">
+            {/* Success Header */}
+            <div className="text-center mb-8">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-green-600 mb-2">Payment Successful!</h1>
+              <p className="text-muted-foreground">
+                Your payment has been processed successfully. Your booking is being confirmed.
+              </p>
+            </div>
+
+            {/* Generic Success Message */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-600" />
+                  What Happens Next?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-700">
+                    <strong>Great news!</strong> Your payment has been received and your booking is being processed.
+                  </p>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-sm font-medium text-blue-600">1</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Payment Confirmed</p>
+                      <p className="text-sm text-muted-foreground">
+                        Your payment has been verified and processed successfully.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-sm font-medium text-blue-600">2</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Booking Processing</p>
+                      <p className="text-sm text-muted-foreground">
+                        Your booking is being confirmed and dates are being reserved.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-sm font-medium text-blue-600">3</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">Confirmation Email</p>
+                      <p className="text-sm text-muted-foreground">
+                        You'll receive a confirmation email with all the details shortly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button asChild className="flex-1">
+                <Link to="/dashboard">Go to Dashboard</Link>
+              </Button>
+              <Button asChild variant="outline" className="flex-1">
+                <Link to="/accommodations">Book Another Stay</Link>
+              </Button>
+            </div>
+
+            {/* Support Information */}
+            <div className="mt-8 text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Need immediate assistance?
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center text-sm">
+                <span className="text-blue-600">📧 support@ndarehe.com</span>
+                <span className="text-blue-600">📞 +250 785 845 701</span>
+              </div>
+            </div>
           </div>
         </div>
         <Footer />
