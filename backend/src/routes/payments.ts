@@ -146,79 +146,116 @@ const router = Router();
  *                           type: integer
  */
 
-// @desc    Create payment
-// @route   POST /api/payments
-// @access  Private
+// @desc    Initialize Flutterwave payment
+// @route   POST /api/payments/flutterwave
+// @access  Public (but should be protected in production)
 router.post("/flutterwave", async (req, res) => {
-  const { bookingId, amount, currency, customer } = req.body;
-
-  if (!bookingId || !amount || !currency || !customer) {
-    return res.status(400).json({ success: false, message: "Missing parameters" });
-  }
-
-  const tx_ref = `ACCOM-${bookingId}-${Date.now()}`;
-
   try {
-    console.log(`[Payment] Initializing Flutterwave payment for booking ${bookingId}`);
-    console.log(`[Payment] Amount: ${amount} ${currency}`);
-    console.log(`[Payment] Customer: ${customer.name} (${customer.email})`);
-    console.log(`[Payment] Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`[Payment] Backend URL: ${process.env.BACKEND_URL || 'localhost:5000'}`);
+    const { bookingId, amount, currency, customer } = req.body;
 
-    const payload = {
-      tx_ref,
-      amount,
-      currency,
-      redirect_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/flutterwave/verify`,
-      customer,
-      meta: { bookingId },
-      payment_type: customer.phonenumber ? "mobilemoney" : "card"
-    } as const;
+    // Validate required parameters
+    if (!bookingId || !amount || !currency || !customer) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required parameters: bookingId, amount, currency, or customer" 
+      });
+    }
 
-    const response = await initializePayment(payload);
-
-    // Fetch booking and user to satisfy required relations for PaymentCreateInput
+    // Check if booking exists
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: { user: true }
     });
 
-    if (!booking || !booking.user) {
-      return res.status(404).json({ success: false, message: "Booking or user not found" });
+    if (!booking) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Booking not found" 
+      });
     }
+
+    // Check if booking is already paid
+    const existingPayment = await prisma.payment.findFirst({
+      where: { bookingId, status: "COMPLETED" }
+    });
+
+    if (existingPayment) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Booking already paid" 
+      });
+    }
+
+    const tx_ref = `ACCOM-${bookingId}-${Date.now()}`;
+
+    console.log(`[Payment] Initializing Flutterwave payment for booking ${bookingId}`);
+    
+    const payload = {
+      tx_ref,
+      amount: parseFloat(amount),
+      currency,
+      redirect_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/flutterwave/verify`,
+      customer: {
+        email: customer.email,
+        phonenumber: customer.phonenumber || "",
+        name: customer.name
+      },
+      customizations: {
+        title: "Accommodation Booking",
+        description: `Payment for booking ${bookingId}`,
+        logo: process.env.COMPANY_LOGO_URL || ""
+      },
+      meta: { bookingId },
+      payment_options: "card, mobilemoney, banktransfer"
+    };
+
+    const response = await initializePayment(payload);
 
     // Create payment record
     await prisma.payment.create({
       data: {
-        booking: { connect: { id: bookingId } },
-        user: { connect: { id: booking.user.id } },
+        bookingId,
+        userId: booking.userId,
         method: customer.phonenumber ? "MOBILE_MONEY" : "CARD",
         transactionId: tx_ref,
-        amount,
+        amount: parseFloat(amount),
         currency,
         status: "PENDING"
       }
     });
 
     // Extract payment link from Flutterwave response
-    const link = (response?.data?.link) || response?.link;
+    const link = response?.data?.link || response?.link;
 
-    if (link) {
-      console.log(`[Payment] ✅ Flutterwave payment link generated: ${link}`);
-      console.log(`[Payment] Transaction reference: ${tx_ref}`);
-      console.log(`[Payment] Booking ID: ${bookingId}`);
-      console.log(`[Payment] Redirect URL: ${payload.redirect_url}`);
-    } else {
-      console.error('[Payment] ❌ No payment link in Flutterwave response:', response);
-      return res.status(500).json({ success: false, message: "Failed to generate payment link" });
+    if (!link) {
+      console.error('[Payment] No payment link in Flutterwave response:', response);
+      return res.status(500).json({ 
+        success: false, 
+        message: "Failed to generate payment link" 
+      });
     }
 
-    return res.json({ success: true, link, tx_ref });
+    console.log(`[Payment] Payment link generated for tx_ref: ${tx_ref}`);
+    
+    return res.json({ 
+      success: true, 
+      data: {
+        link, 
+        tx_ref,
+        amount,
+        currency
+      }
+    });
   } catch (error) {
-    console.error("Flutterwave payment error:", error);
-    return res.status(500).json({ success: false, message: "Payment initialization failed" });
+    console.error("Flutterwave payment initialization error:", error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "Payment initialization failed",
+      error: process.env.NODE_ENV === 'development' && error && typeof error === 'object' && 'message' in error ? (error as any).message : undefined
+    });
   }
 });
+
 
 
 // @desc    Get payment by ID

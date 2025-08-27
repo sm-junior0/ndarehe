@@ -234,30 +234,32 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
     }
 
     // Check availability for accommodation
-    if (serviceType === 'ACCOMMODATION' && startDate && endDate) {
-      const conflictingBookings = await prisma.booking.findFirst({
-        where: {
-          accommodationId: serviceId,
-          serviceType: 'ACCOMMODATION',
-          status: {
-            in: ['PENDING', 'CONFIRMED']
-          },
-          OR: [
-            {
-              startDate: { lte: new Date(endDate) },
-              endDate: { gte: new Date(startDate) }
-            }
-          ]
+// Check availability for accommodation
+if (serviceType === 'ACCOMMODATION' && startDate && endDate) {
+  const conflictingBookings = await prisma.booking.findFirst({
+    where: {
+      accommodationId: serviceId,
+      serviceType: 'ACCOMMODATION',
+      status: {
+        in: ['PENDING', 'CONFIRMED']
+      },
+      // FIX: Use AND instead of OR for proper date range overlap detection
+      AND: [
+        {
+          startDate: { lt: new Date(endDate) }, // Changed to lt (less than)
+          endDate: { gt: new Date(startDate) }   // Changed to gt (greater than)
         }
-      });
-
-      if (conflictingBookings) {
-        return res.status(400).json({
-          success: false,
-          error: 'Accommodation not available for selected dates'
-        });
-      }
+      ]
     }
+  });
+
+  if (conflictingBookings) {
+    return res.status(400).json({
+      success: false,
+      error: 'Accommodation not available for selected dates'
+    });
+  }
+}
 
     // Create booking
     const booking = await prisma.booking.create({

@@ -12,7 +12,7 @@ import { specs } from './config/swagger';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
-import { testConnection } from './config/database';
+// import { testConnection } from './config/database';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -139,13 +139,15 @@ app.get('/health', (req, res) => {
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 // API routes
-app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/accommodations', accommodationRoutes);
 app.use('/api/transportation', transportationRoutes);
 app.use('/api/tours', tourRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/transactions', paymentRoutes);
+app.use('/apis/payments', paymentRoutes);
+app.use('/apis/transactions', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/trip-plans', tripPlanRoutes);
 app.use('/api/notifications', notificationRoutes);
@@ -258,8 +260,8 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     // Test database connection
-    await testConnection();
-    console.log('✅ Database connection established');
+    // await testConnection();
+    // console.log('✅ Database connection established');
 
     // Start server
     app.listen(PORT, () => {
