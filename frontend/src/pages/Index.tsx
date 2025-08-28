@@ -50,9 +50,9 @@ const Index = () => {
       <Header />
       
       {/* Hero Section - Modified opacity values */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-green-600/30 to-green-800/30 text-white">
+      <section className="relative overflow-hidden bg-gradient-to-br from-green-600/40 to-green-800/40 text-white">
         <div className="absolute inset-0 bg-[url('/src/rwanda_main.jpg')] bg-cover bg-center opacity-20"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-green-600/30 to-green-800/30"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-green-600/40 to-green-800/40"></div>
         <div className="absolute top-0 left-0 w-full h-full">
           <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full animate-pulse"></div>
           <div className="absolute top-40 right-20 w-16 h-16 bg-white/20 rounded-full animate-ping"></div>
