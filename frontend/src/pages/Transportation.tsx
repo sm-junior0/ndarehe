@@ -516,56 +516,6 @@ const Transportation = () => {
                 </div>
               </div>
 
-              {paymentProvider !== 'MOMO' && (
-                <div className="grid grid-cols-1 gap-4">
-                  {paymentProvider === 'VISA' && (
-                    <div>
-                      <Label htmlFor="issuingBank">Issuing Bank</Label>
-                      <select id="issuingBank" className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={selectedBank} onChange={(e) => setSelectedBank(e.target.value as any)}>
-                        <option>Bank of Kigali</option>
-                        <option>I&M Bank</option>
-                        <option>Equity Bank</option>
-                      </select>
-                    </div>
-                  )}
-                  <div>
-                    <Label htmlFor="cardHolder">Cardholder Name</Label>
-                    <Input id="cardHolder" placeholder="JOHN DOE" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="cardNumber">Card Number</Label>
-                    <Input id="cardNumber" inputMode="numeric" maxLength={19} placeholder="4111 1111 1111 1111" value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} required />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="expiry">Expiry (MM/YY)</Label>
-                      <Input id="expiry" placeholder="12/26" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} required />
-                    </div>
-                    <div>
-                      <Label htmlFor="cvc">Security Code</Label>
-                      <Input id="cvc" placeholder="123" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} required />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {paymentProvider === 'MOMO' && (
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <Label htmlFor="momoName">MoMo Account Name</Label>
-                    <Input id="momoName" placeholder="JOHN DOE" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="momoPhone">MoMo Phone Number</Label>
-                    <Input id="momoPhone" placeholder="07xx xxx xxx" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="momoRef">Payment Reference (optional)</Label>
-                    <Input id="momoRef" placeholder="eg. TRIP-2025-0001" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
-                  </div>
-                </div>
-              )}
-
               {/* Live total */}
               {selectedService && (() => {
                 const isHour = booking.serviceType === 'hour';

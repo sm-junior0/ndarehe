@@ -765,41 +765,6 @@ const handleFlutterwavePayment = async () => {
                 </p>
               </div>
 
-              {/* Card / MoMo Inputs */}
-              {paymentProvider !== "MOMO" ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {paymentProvider === "VISA" && (
-                    <div>
-                      <Label htmlFor="issuingBank">Issuing Bank</Label>
-                      <select
-                        id="issuingBank"
-                        name="issuingBank"
-                        aria-label="Select issuing bank"
-                        className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-                        value={selectedBank}
-                        onChange={e => setSelectedBank(e.target.value as 'Bank of Kigali' | "I&M Bank" | 'Equity Bank')}
-                      >
-                        <option value="Bank of Kigali">Bank of Kigali</option>
-                        <option value="I&M Bank">I&M Bank</option>
-                        <option value="Equity Bank">Equity Bank</option>
-                      </select>
-                    </div>
-                  )}
-                  <Input id="cardHolder" placeholder="Cardholder Name" value={card.holder} onChange={e => setCard({ ...card, holder: e.target.value })} />
-                  <Input id="cardNumber" placeholder="Card Number" maxLength={19} value={card.number} onChange={e => setCard({ ...card, number: e.target.value })} />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input id="expiry" placeholder="MM/YY" value={card.expiry} onChange={e => setCard({ ...card, expiry: e.target.value })} />
-                    <Input id="cvc" placeholder="CVC" maxLength={4} value={card.cvc} onChange={e => setCard({ ...card, cvc: e.target.value })} />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  <Input id="momoName" placeholder="MoMo Account Name" value={momo.name} onChange={e => setMomo({ ...momo, name: e.target.value })} />
-                  <Input id="momoPhone" placeholder="MoMo Phone Number" inputMode="tel" value={momo.phone} onChange={e => setMomo({ ...momo, phone: e.target.value })} />
-                  <Input id="momoRef" placeholder="Payment Reference (optional)" value={momo.reference} onChange={e => setMomo({ ...momo, reference: e.target.value })} />
-                </div>
-              )}
-
               {/* Total Calculation */}
               {(() => {
                 const hasDates = booking.checkIn && booking.checkOut;

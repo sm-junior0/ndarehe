@@ -292,6 +292,88 @@ router.get('/bookings', protect, requireVerification, async (req: AuthenticatedR
   }
 });
 
+// @desc    Get user booking by ID
+// @route   GET /api/users/bookings/:id
+// @access  Private
+router.get('/bookings/:id', protect, requireVerification, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.id;
+
+    const booking = await prisma.booking.findFirst({
+      where: { 
+        id,
+        userId // Ensure user can only access their own bookings
+      },
+      include: {
+        accommodation: {
+          select: {
+            name: true,
+            type: true,
+            images: true,
+            location: {
+              select: {
+                city: true,
+                district: true
+              }
+            }
+          }
+        },
+        transportation: {
+          select: {
+            name: true,
+            type: true,
+            images: true,
+            location: {
+              select: {
+                city: true,
+                district: true
+              }
+            }
+          }
+        },
+        tour: {
+          select: {
+            name: true,
+            type: true,
+            images: true,
+            location: {
+              select: {
+                city: true,
+                district: true
+              }
+            }
+          }
+        },
+        payment: {
+          select: {
+            status: true,
+            method: true,
+            amount: true,
+            currency: true
+          }
+        }
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found or access denied'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        booking
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @desc    Get user reviews
 // @route   GET /api/users/reviews
 // @access  Private
