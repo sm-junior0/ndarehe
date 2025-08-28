@@ -1,5 +1,5 @@
-// utils/flutterwave.ts
-import axios from 'axios';
+import Flutterwave from "flutterwave-node-v3";
+import axios from "axios";
 
 // Validate environment variables
 const FLW_PUBLIC_KEY = process.env.FLW_PUBLIC_KEY;
@@ -16,13 +16,14 @@ console.log('[Flutterwave] ✅ Environment variables loaded successfully');
 console.log('[Flutterwave] Public Key:', FLW_PUBLIC_KEY.substring(0, 10) + '...');
 console.log('[Flutterwave] Secret Key:', FLW_SECRET_KEY.substring(0, 10) + '...');
 
+const flw = new Flutterwave(FLW_PUBLIC_KEY, FLW_SECRET_KEY);
 const FLW_API_BASE = 'https://api.flutterwave.com/v3';
 
 export interface FlutterwavePaymentPayload {
   tx_ref: string;
   amount: number;
   currency: string;
-  payment_options?: string;
+  payment_type?: "card" | "mobilemoney" | "ussd";
   redirect_url?: string;
   customer: {
     email: string;
@@ -41,6 +42,7 @@ export const initializePayment = async (payload: FlutterwavePaymentPayload) => {
       currency: payload.currency,
       customer_email: payload.customer.email,
       customer_name: payload.customer.name,
+      payment_type: payload.payment_type,
       redirect_url: payload.redirect_url
     });
 
@@ -52,6 +54,11 @@ export const initializePayment = async (payload: FlutterwavePaymentPayload) => {
       throw new Error('Invalid amount: must be greater than 0');
     }
 
+    // Derive payment options
+    // For Rwanda MoMo, the option key is "mobilemoneyrw"; card remains "card".
+    const wantsMoMo = payload.payment_type === 'mobilemoney' || !!payload.customer.phonenumber;
+    const payment_options = wantsMoMo ? 'mobilemoneyrw' : 'card';
+
     const requestPayload = {
       tx_ref: payload.tx_ref,
       amount: payload.amount,
@@ -59,7 +66,7 @@ export const initializePayment = async (payload: FlutterwavePaymentPayload) => {
       redirect_url: payload.redirect_url,
       customer: payload.customer,
       meta: payload.meta || {},
-      payment_options: payload.payment_options || 'card,mobilemoney,banktransfer',
+      payment_options,
       customizations: {
         title: 'Ndarehe Booking Payment',
         description: 'Secure checkout powered by Flutterwave',
@@ -105,8 +112,10 @@ export const initializePayment = async (payload: FlutterwavePaymentPayload) => {
     }
 
     // If axios error, log response data for clarity
-    if (axios.isAxiosError(error)) {
-      console.error('[Flutterwave] Axios response error:', error.response?.status, error.response?.data);
+    // @ts-ignore
+    if (error?.response) {
+      // @ts-ignore
+      console.error('[Flutterwave] Axios response error:', error.response.status, error.response.data);
     }
 
     throw error;
@@ -135,8 +144,10 @@ export const verifyPayment = async (tx_ref: string) => {
     return data;
   } catch (error) {
     console.error("[Flutterwave] ❌ Verify payment error:", error);
-    if (axios.isAxiosError(error)) {
-      console.error('[Flutterwave] Axios response error (verify):', error.response?.status, error.response?.data);
+    // @ts-ignore
+    if (error?.response) {
+      // @ts-ignore
+      console.error('[Flutterwave] Axios response error (verify):', error.response.status, error.response.data);
     }
     throw error;
   }

@@ -292,7 +292,6 @@ enum ServiceType {
 }
 
 enum BookingStatus {
-  TEMPORARY
   PENDING
   CONFIRMED
   CANCELLED
