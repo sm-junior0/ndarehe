@@ -366,7 +366,7 @@ router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunct
  *       200:
  *         description: Activity feed retrieved successfully
  */
-router.get('/activity', async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.get('/activity', protect, authorize('ADMIN'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(parseInt((req.query.limit as string) || '25', 10), 100);
     const page = Math.max(parseInt((req.query.page as string) || '1', 10), 1);
@@ -1065,7 +1065,7 @@ export default router;
 // @desc    Create a new user (Admin only)
 // @route   POST /api/admin/users
 // @access  Private (Admin only)
-router.post('/users', validate(adminSchemas.createUser), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/users', protect, authorize('ADMIN'), validate(adminSchemas.createUser), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { firstName, lastName, email, role, password, phone, isVerified, isActive } = req.body;
 

@@ -233,18 +233,19 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
         });
     }
 
-    // Check availability for accommodation - ONLY check CONFIRMED bookings, not TEMPORARY ones
+    // Check availability for accommodation
     if (serviceType === 'ACCOMMODATION' && startDate && endDate) {
       const conflictingBookings = await prisma.booking.findFirst({
         where: {
           accommodationId: serviceId,
           serviceType: 'ACCOMMODATION',
-          status: 'CONFIRMED', // Only check CONFIRMED bookings, not TEMPORARY
-          // Use AND instead of OR for proper date range overlap detection
-          AND: [
+          status: {
+            in: ['PENDING', 'CONFIRMED']
+          },
+          OR: [
             {
-              startDate: { lt: new Date(endDate) },
-              endDate: { gt: new Date(startDate) }
+              startDate: { lte: new Date(endDate) },
+              endDate: { gte: new Date(startDate) }
             }
           ]
         }
@@ -258,7 +259,7 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
       }
     }
 
-    // Create booking with TEMPORARY status (not PENDING)
+    // Create booking
     const booking = await prisma.booking.create({
       data: {
         userId: req.user!.id,
@@ -271,8 +272,7 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
         numberOfPeople: parseInt(numberOfPeople),
         totalAmount,
         currency: service.currency || 'RWF',
-        specialRequests: specialRequests || null,
-        status: 'TEMPORARY' // Use TEMPORARY status instead of PENDING
+        specialRequests: specialRequests || null
       },
       include: {
         user: {
@@ -313,27 +313,46 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
       actorUserId: req.user!.id,
       targetType: 'BOOKING',
       targetId: booking.id,
-      message: `Temporary booking created • ${service.name}`,
+      message: `Booking created • ${service.name}`,
       metadata: { serviceType, serviceId },
     }).catch(() => {});
 
-    // For TEMPORARY bookings, don't send confirmation emails yet
-    // They will be sent when payment is confirmed and status changes to CONFIRMED
+    // Send confirmation email asynchronously (do not block response)
+    // IMPORTANT: For accommodation and transportation bookings, defer confirmation email until payment verification
+    // Only tours send immediate confirmation emails (they are typically free or have different payment flows)
+    if (serviceType === 'TOUR') {
+      const serviceName = service.name;
+      const payload = {
+        id: booking.id,
+        serviceName,
+        startDate: booking.startDate,
+        totalAmount: booking.totalAmount,
+        currency: booking.currency
+      };
+      setImmediate(() => {
+        try {
+          const { subject, html } = emailTemplates.bookingConfirmation(
+            req.user!.firstName,
+            payload
+          );
+          sendEmail(req.user!.email, subject, html).catch((emailError) => {
+            console.error('Failed to send booking confirmation email:', emailError);
+          });
+        } catch (emailError) {
+          console.error('Failed to prepare booking confirmation email:', emailError);
+        }
+      });
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Temporary booking created successfully. Please complete payment to confirm.',
-      data: { 
-        booking,
-        requiresPayment: true,
-        paymentInstructions: 'Complete payment to confirm your booking'
-      }
+      message: 'Booking created successfully',
+      data: { booking }
     });
   } catch (error) {
     next(error);
   }
 });
-
 
 // @desc    Get user bookings
 // @route   GET /api/bookings
@@ -453,7 +472,6 @@ router.get('/:id', protect, async (req: AuthRequest, res: Response, next: NextFu
   }
 });
 
-
 // @desc    Cancel booking
 // @route   PUT /api/bookings/:id/cancel
 // @access  Private
@@ -553,72 +571,6 @@ router.get('/stats', protect, async (req: AuthRequest, res: Response, next: Next
         stats,
         totalBookings,
         totalSpent: totalSpent._sum.totalAmount || 0
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// @desc    Cleanup expired TEMPORARY bookings
-// @route   POST /api/bookings/cleanup
-// @access  Private (Admin only)
-router.post('/cleanup', protect, async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    // Only admins can trigger cleanup
-    if (req.user!.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. Admin role required.'
-      });
-    }
-
-    // Find TEMPORARY bookings older than 15 minutes (900000 ms)
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-    
-    const expiredBookings = await prisma.booking.findMany({
-      where: {
-        status: 'TEMPORARY',
-        createdAt: {
-          lt: fifteenMinutesAgo
-        }
-      }
-    });
-
-    if (expiredBookings.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: 'No expired TEMPORARY bookings found',
-        data: { cleanedCount: 0 }
-      });
-    }
-
-    // Delete expired TEMPORARY bookings
-    const deleteResult = await prisma.booking.deleteMany({
-      where: {
-        status: 'TEMPORARY',
-        createdAt: {
-          lt: fifteenMinutesAgo
-        }
-      }
-    });
-
-    // Log cleanup activity
-    logActivity({
-      type: ActivityType.BOOKING_CANCELLED,
-      actorUserId: req.user!.id,
-      targetType: 'BOOKING',
-      targetId: 'CLEANUP',
-      message: `Cleaned up ${deleteResult.count} expired TEMPORARY bookings`,
-      metadata: { cleanedCount: deleteResult.count, cleanupType: 'EXPIRED_TEMPORARY' },
-    }).catch(() => {});
-
-    res.status(200).json({
-      success: true,
-      message: `Successfully cleaned up ${deleteResult.count} expired TEMPORARY bookings`,
-      data: { 
-        cleanedCount: deleteResult.count,
-        expiredBookings: expiredBookings.map(b => ({ id: b.id, createdAt: b.createdAt }))
       }
     });
   } catch (error) {
