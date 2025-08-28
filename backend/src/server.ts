@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -50,9 +50,13 @@ app.use(cors({
       'https://ndarehe.onrender.com',
       'http://localhost:3000', 
       'http://localhost:3001', 
-      'http://localhost:5173',
-      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+      'http://localhost:5173'
     ];
+    
+    // Add FRONTEND_URL if it's different from existing origins
+    if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
+    }
     
     // Log CORS requests for debugging
     console.log('CORS request from origin:', origin);
@@ -129,7 +133,9 @@ app.get('/health', (req, res) => {
         'https://ndarehe.vercel.app',
         'https://ndarehe-frontend.vercel.app',
         'https://ndarehe.onrender.com',
-        ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:5173'
       ]
     }
   });
@@ -254,9 +260,75 @@ app.get('/', (req, res) => {
   });
 });
 
+// Global error handler for unhandled errors
+app.use((error: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('Unhandled error:', error);
+  
+  if (error.name === 'JsonWebTokenError') {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+  
+  if (error.name === 'TokenExpiredError') {
+    return res.status(401).json({ message: 'Token expired' });
+  }
+  
+  res.status(error.statusCode || 500).json({
+    message: error.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+  });
+});
+
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
+
+// Cleanup expired temporary bookings
+const cleanupExpiredBookings = async () => {
+  try {
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    
+    // Find expired temporary bookings
+    const expiredBookings = await prisma.booking.findMany({
+      where: {
+        status: 'TEMPORARY',
+        createdAt: {
+          lt: fifteenMinutesAgo
+        }
+      },
+      include: {
+        payments: true
+      }
+    });
+
+    if (expiredBookings.length > 0) {
+      console.log(`🧹 Found ${expiredBookings.length} expired temporary bookings to clean up`);
+      
+      // Delete payments first to avoid foreign key constraint violation
+      const bookingIds = expiredBookings.map(booking => booking.id);
+      
+      await prisma.payment.deleteMany({
+        where: {
+          bookingId: {
+            in: bookingIds
+          }
+        }
+      });
+
+      // Then delete the bookings
+      const deleteResult = await prisma.booking.deleteMany({
+        where: {
+          id: {
+            in: bookingIds
+          }
+        }
+      });
+
+      console.log(`✅ Cleaned up ${deleteResult.count} expired bookings and their payments`);
+    }
+  } catch (error) {
+    console.error('❌ Cleanup job error:', error);
+  }
+};
 
 // Start server
 const startServer = async () => {
@@ -267,6 +339,10 @@ const startServer = async () => {
 
     // Start server
     app.listen(PORT, () => {
+      // Schedule cleanup job to run every 15 minutes
+      setInterval(cleanupExpiredBookings, 15 * 60 * 1000);
+      console.log('🧹 Cleanup job scheduled to run every 15 minutes');
+      
       console.log(`🚀 NDAREHE API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/health`);
@@ -292,7 +368,9 @@ const startServer = async () => {
         'https://ndarehe.vercel.app',
         'https://ndarehe-frontend.vercel.app',
         'https://ndarehe.onrender.com',
-        ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:5173'
       ]);
     });
   } catch (error) {
