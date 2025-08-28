@@ -246,7 +246,7 @@ const handleFlutterwavePayment = async () => {
       }
     }
 
-    // 1) Create booking (PENDING)
+    // 1) Create booking (TEMPORARY status)
     const bookingRes = await bookingsApi.create({
       serviceType: 'ACCOMMODATION',
       serviceId: accommodation.id,
@@ -256,8 +256,13 @@ const handleFlutterwavePayment = async () => {
       specialRequests: booking.specialRequests || ''
     });
     
-    if (!bookingRes.success) throw new Error('Failed to create booking');
+    if (!bookingRes.success) {
+      console.error('Booking creation failed:', bookingRes);
+      throw new Error('Failed to create booking');
+    }
+    
     const newBooking = bookingRes.data.booking;
+    console.log('✅ Booking created successfully:', newBooking);
 
     // 2) Compute amount
     const checkInDate = new Date(booking.checkIn);
@@ -268,6 +273,8 @@ const handleFlutterwavePayment = async () => {
     const guests = parseInt(booking.guests) || 1;
     const amount = nights * guests * (accommodation.pricePerNight || 0);
 
+    console.log('💰 Payment details:', { nights, guests, amount, currency: accommodation.currency });
+
     // 3) Prepare customer (Flutterwave Hosted Pay)
     const customer = {
       email: user?.email || 'guest@example.com',
@@ -275,7 +282,17 @@ const handleFlutterwavePayment = async () => {
       phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
     };
 
+    console.log('👤 Customer details:', customer);
+
     // 4) Initialize Flutterwave session via backend
+    console.log('🚀 Initializing Flutterwave payment...');
+    console.log('📤 Sending payload to backend:', {
+      bookingId: newBooking.id,
+      amount,
+      currency: accommodation.currency || 'RWF',
+      customer,
+    });
+    
     const initRes = await flutterwaveApi.init({
       bookingId: newBooking.id,
       amount,
@@ -283,26 +300,47 @@ const handleFlutterwavePayment = async () => {
       customer,
     });
 
+    console.log('📡 Flutterwave init response:', initRes);
+
     if (initRes.success && initRes.link) {
-      setFlutterwaveLink(initRes.link);
-      if (initRes.tx_ref) setTxRef(initRes.tx_ref);
+      const paymentLink = initRes.link;
+      const transactionRef = initRes.tx_ref;
       
-      console.log('[Flutterwave] Hosted Pay link:', initRes.link, 'tx_ref:', initRes.tx_ref);
+      setFlutterwaveLink(paymentLink);
+      if (transactionRef) setTxRef(transactionRef);
       
-      // Open Flutterwave payment page in same tab
-      window.location.href = initRes.link;
+      console.log('✅ Flutterwave payment initialized successfully');
+      console.log('🔗 Payment link:', paymentLink);
+      console.log('📝 Transaction ref:', transactionRef);
       
-      toast({
-        title: 'Payment Page Opened',
-        description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
-        variant: 'default',
-      });
+      // Open Flutterwave payment page in a new tab/window
+      const paymentWindow = window.open(paymentLink, '_blank', 'noopener,noreferrer');
+      
+      if (paymentWindow) {
+        toast({
+          title: 'Payment Page Opened',
+          description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
+          variant: 'default',
+        });
+        
+        // Focus the payment window
+        paymentWindow.focus();
+      } else {
+        // Fallback if popup is blocked
+        toast({
+          title: 'Popup Blocked',
+          description: 'Please allow popups and try again, or copy this link: ' + paymentLink,
+          variant: 'destructive',
+        });
+      }
     } else {
-      throw new Error(initRes.message || 'Failed to initiate payment');
+      console.error('❌ Flutterwave init failed:', initRes);
+      throw new Error(initRes.message || 'Failed to initiate payment - no payment link received');
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment initialization error:', error);
-    toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
+    toast({ title: 'Payment Error', description: errorMessage, variant: 'destructive' });
   } finally {
     setIsPaying(false);
   }
@@ -331,11 +369,12 @@ const handleFlutterwavePayment = async () => {
       } else {
         throw new Error('Payment not verified yet. Please complete the payment and try again.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Payment verification error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Payment not verified. Please complete the payment first.';
       toast({
         title: 'Verification Failed',
-        description: error.message || 'Payment not verified. Please complete the payment first.',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -373,9 +412,10 @@ const handleFlutterwavePayment = async () => {
         variant: 'default'
       });
       console.log('[Booking] ✅ Booking confirmed successfully');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Booking confirmation error:', error);
-      toast({ title: 'Confirmation Failed', description: error.message || 'Unable to finalize booking', variant: 'destructive' });
+      const errorMessage = error instanceof Error ? error.message : 'Unable to finalize booking';
+      toast({ title: 'Confirmation Failed', description: errorMessage, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -778,6 +818,21 @@ const handleFlutterwavePayment = async () => {
                       Transaction Reference: {txRef}
                     </div>
                   )}
+                  
+                  {flutterwaveLink && (
+                    <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded border border-blue-200">
+                      <p className="font-medium text-blue-700 mb-1">Payment Link Generated</p>
+                      <p className="text-blue-600 mb-2">If the payment page didn't open automatically, click the link below:</p>
+                      <a 
+                        href={flutterwaveLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline hover:text-blue-800 break-all"
+                      >
+                        {flutterwaveLink}
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Step 2: Verify Payment */}
@@ -806,8 +861,14 @@ const handleFlutterwavePayment = async () => {
                     </Button>
                     
                     {!paymentVerified && txRef && (
-                      <div className="text-xs text-muted-foreground">
-                        After completing payment, click "Verify Payment" to confirm
+                      <div className="text-xs text-muted-foreground bg-yellow-50 p-2 rounded border border-yellow-200">
+                        <p className="font-medium text-yellow-700 mb-1">Payment Verification Required</p>
+                        <p className="text-yellow-600">
+                          After completing payment on Flutterwave, return here and click "Verify Payment" to confirm your booking.
+                        </p>
+                        <p className="text-xs mt-1 text-yellow-600">
+                          💡 Tip: Keep this tab open while making payment in the other tab
+                        </p>
                       </div>
                     )}
                   </div>
@@ -823,6 +884,14 @@ const handleFlutterwavePayment = async () => {
                     <p className="text-sm text-green-600 mt-1">
                       Your payment has been confirmed. You can now proceed with your booking.
                     </p>
+                    <div className="mt-2 p-2 bg-green-100 rounded text-xs text-green-700">
+                      <p className="font-medium">Next Steps:</p>
+                      <ol className="list-decimal list-inside mt-1 space-y-1">
+                        <li>Click "Confirm and Continue" below to finalize your booking</li>
+                        <li>Check your email for confirmation details</li>
+                        <li>Your booking will be confirmed and dates reserved</li>
+                      </ol>
+                    </div>
                   </div>
                 )}
               </div>

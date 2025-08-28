@@ -35,7 +35,7 @@ export interface Booking {
   numberOfPeople: number;
   totalAmount: number;
   currency: string;
-  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED' | 'COMPLETED' | string;
+  status: 'TEMPORARY' | 'CONFIRMED' | 'PENDING' | 'CANCELLED' | 'COMPLETED' | string;
   isConfirmed?: boolean;
   isCancelled?: boolean;
   createdAt: string;

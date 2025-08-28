@@ -7,6 +7,8 @@ import AirportPickup from "./pages/AirportPickup";
 import LocalExperiences from "./pages/LocalExperiences";
 import TripPlanner from "./pages/TripPlanner";
 import BookingSummary from "./pages/BookingSummary";
+import BookingSuccess from "./pages/BookingSuccess";
+import BookingFailed from "./pages/BookingFailed";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -56,6 +58,8 @@ function App() {
             <Route path="/local-experiences" element={<LocalExperiences />} />
             <Route path="/trip-planner" element={<TripPlanner />} />
             <Route path="/booking-summary" element={<BookingSummary />} />
+            <Route path="/booking/success" element={<BookingSuccess />} />
+            <Route path="/booking/failed" element={<BookingFailed />} />
 
             {/* Public routes */}
             <Route path="/login" element={<Login />} />

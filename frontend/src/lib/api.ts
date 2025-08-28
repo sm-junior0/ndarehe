@@ -342,6 +342,10 @@ export const bookingsApi = {
     return apiRequest<ApiResponse<{ bookings: any[]; pagination: any }>>(endpoint);
   },
 
+  getById: async (id: string) => {
+    return apiRequest<ApiResponse<{ booking: any }>>(`/users/bookings/${id}`);
+  },
+
   cancel: async (id: string) => {
     return apiRequest<ApiResponse<any>>(`/bookings/${id}/cancel`, {
       method: 'PUT',
