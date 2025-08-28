@@ -12,7 +12,6 @@ import { specs } from './config/swagger';
 
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
-import { logActivity } from './utils/activity';
 // import { testConnection } from './config/database';
 
 // Import routes
@@ -28,15 +27,11 @@ import tripPlanRoutes from './routes/tripPlans';
 import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
 
-
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const prisma = new PrismaClient();
-
-// Trust proxy for rate limiting behind load balancers
-app.set('trust proxy', 1);
 
 // Security middleware
 app.use(helmet());
@@ -152,6 +147,7 @@ app.use('/api/tours', tourRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/transactions', paymentRoutes);
+// Backward-compat alias: some clients call "/apis" instead of "/api"
 app.use('/apis/payments', paymentRoutes);
 app.use('/apis/transactions', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
@@ -179,14 +175,16 @@ app.get('/verify-email', async (req, res) => {
 
       console.log('Email verified successfully for user:', user.email);
 
-      // Always redirect to the deployed frontend URL, not localhost
-      const frontendUrl = process.env.FRONTEND_URL || 'https://ndarehe.vercel.app';
+      // Redirect to frontend with success status
+      const frontendUrl = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
       
       return res.redirect(`${frontendUrl}/verify-email?status=success`);
     } catch (error) {
       console.error('Email verification failed:', error);
       
-      const frontendUrl = process.env.FRONTEND_URL || 'https://ndarehe.vercel.app';
+      const frontendUrl = process.env.FRONTEND_URL || 
+        (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
       
       if (error instanceof jwt.JsonWebTokenError) {
         return res.redirect(`${frontendUrl}/verify-email?status=error&message=Invalid or expired verification token`);
@@ -198,7 +196,8 @@ app.get('/verify-email', async (req, res) => {
 
   // If status is present without token, redirect to frontend
   if (status) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://ndarehe.vercel.app';
+    const frontendUrl = process.env.FRONTEND_URL || 
+      (process.env.NODE_ENV !== 'production' ? 'http://localhost:5173' : 'https://ndarehe.vercel.app');
     
     return res.redirect(`${frontendUrl}/verify-email?status=${encodeURIComponent(status)}`);
   }
@@ -262,9 +261,9 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
-    // Test database connection
-    // await testConnection();
-    // console.log('✅ Database connection established');
+//     // Test database connection
+//     await testConnection();
+//     console.log('✅ Database connection established');
 
     // Start server
     app.listen(PORT, () => {
@@ -295,71 +294,11 @@ const startServer = async () => {
         'https://ndarehe.onrender.com',
         ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
       ]);
-
-      // Start automatic cleanup job for expired TEMPORARY bookings
-      startCleanupJob();
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
-};
-
-// Automatic cleanup job for expired TEMPORARY bookings
-const startCleanupJob = () => {
-  const cleanupInterval = 15 * 60 * 1000; // 15 minutes
-  
-  const cleanupExpiredBookings = async () => {
-    try {
-      console.log('🧹 Starting automatic cleanup of expired TEMPORARY bookings...');
-      
-      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-      
-              const expiredBookings = await prisma.booking.findMany({
-          where: {
-            status: 'TEMPORARY' as any,
-            createdAt: {
-              lt: fifteenMinutesAgo
-            }
-          }
-        });
-
-        if (expiredBookings.length > 0) {
-          const deleteResult = await prisma.booking.deleteMany({
-            where: {
-              status: 'TEMPORARY' as any,
-              createdAt: {
-                lt: fifteenMinutesAgo
-              }
-            }
-          });
-
-        console.log(`🧹 Cleaned up ${deleteResult.count} expired TEMPORARY bookings`);
-        
-        // Log cleanup activity
-        await logActivity({
-          type: 'BOOKING_CANCELLED' as any,
-          actorUserId: 'SYSTEM',
-          targetType: 'BOOKING',
-          targetId: 'AUTO_CLEANUP',
-          message: `Automatically cleaned up ${deleteResult.count} expired TEMPORARY bookings`,
-          metadata: { cleanedCount: deleteResult.count, cleanupType: 'AUTO_EXPIRED_TEMPORARY' },
-        }).catch(() => {});
-      } else {
-        console.log('🧹 No expired TEMPORARY bookings found');
-      }
-    } catch (error) {
-      console.error('❌ Cleanup job error:', error);
-    }
-  };
-
-  // Run cleanup immediately on startup
-  cleanupExpiredBookings();
-  
-  // Schedule cleanup every 15 minutes
-  setInterval(cleanupExpiredBookings, cleanupInterval);
-  
-  console.log('🧹 Automatic cleanup job started (runs every 15 minutes)');
 };
 
 // Handle graceful shutdown
