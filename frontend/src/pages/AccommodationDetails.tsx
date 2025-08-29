@@ -651,6 +651,134 @@ const handleFlutterwavePayment = async () => {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Additional Hotel Information Card */}
+<Card className="mt-6">
+  <CardHeader>
+    <CardTitle>Hotel Details</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    {/* Room Types */}
+    {accommodation.roomTypes && accommodation.roomTypes.length > 0 && (
+      <div>
+        <h4 className="font-semibold mb-2">Room Types & Prices</h4>
+        <div className="space-y-2">
+          {accommodation.roomTypes.map((room, idx) => (
+            <div key={room.id || idx} className="flex justify-between items-center text-sm">
+              <span>{room.name}</span>
+              <span className="font-semibold">
+                {room.currency || accommodation.currency} {room.pricePerNight.toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Amenities & Services */}
+    <div>
+      <h4 className="font-semibold mb-2">Services Included</h4>
+      <div className="space-y-1 text-sm">
+        {/* Check for free airport pickup */}
+        {accommodation.amenities?.some(amenity => 
+          amenity.toLowerCase().includes('airport') || 
+          amenity.toLowerCase().includes('pickup')
+        ) ? (
+          <div className="flex items-center gap-2 text-green-600">
+            <Check className="h-4 w-4" />
+            <span>Free Airport Pickup</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>✗</span>
+            <span>No Free Airport Pickup</span>
+          </div>
+        )}
+
+        {/* Check for inclusive breakfast */}
+        {accommodation.amenities?.some(amenity => 
+          amenity.toLowerCase().includes('breakfast') || 
+          amenity.toLowerCase().includes('meal')
+        ) ? (
+          <div className="flex items-center gap-2 text-green-600">
+            <Check className="h-4 w-4" />
+            <span>Inclusive Breakfast</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>✗</span>
+            <span>No Inclusive Breakfast</span>
+          </div>
+        )}
+
+        {/* Check for kitchen */}
+        {accommodation.amenities?.some(amenity => 
+          amenity.toLowerCase().includes('kitchen') || 
+          amenity.toLowerCase().includes('cooking')
+        ) ? (
+          <div className="flex items-center gap-2 text-green-600">
+            <Check className="h-4 w-4" />
+            <span>Kitchen Available</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>✗</span>
+            <span>No Kitchen</span>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Special Notes based on hotel name */}
+    {accommodation.name.includes("Great Seasons") && (
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <strong>Special Note:</strong> All room types include breakfast and free airport pickup. No kitchen facilities available.
+        </p>
+      </div>
+    )}
+
+    {accommodation.name.includes("Highlands Suites") && (
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <strong>Special Note:</strong> Includes breakfast. Airport pickup available for $25.
+        </p>
+      </div>
+    )}
+
+    {accommodation.name.includes("Vista Luxury") && (
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <strong>Special Note:</strong> Kitchen available in all units. No free airport pickup or inclusive breakfast.
+        </p>
+      </div>
+    )}
+
+    {accommodation.name.includes("Grazia") && (
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <strong>Special Note:</strong> Kitchen available in some units. Check room types for details.
+        </p>
+      </div>
+    )}
+
+    {accommodation.name.includes("Ndaru") && (
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <strong>Special Note:</strong> Free airport pickup and inclusive breakfast included.
+        </p>
+      </div>
+    )}
+
+    {(accommodation.name.includes("Oasis") || accommodation.name.includes("Lexor")) && (
+      <div className="bg-blue-50 p-3 rounded-lg">
+        <p className="text-sm text-blue-700">
+          <strong>Special Note:</strong> No inclusive breakfast included.
+        </p>
+      </div>
+    )}
+  </CardContent>
+</Card>
         </div>
       </div>
 
