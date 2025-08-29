@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Hotel, Plus, Eye, Edit, CheckCircle, XCircle, MapPin, Search, Filter, DollarSign, Download } from "lucide-react";
+import { Hotel, Plus, Eye, Edit, CheckCircle, XCircle, MapPin, Search, Filter, DollarSign, Download, Trash2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { adminApi } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -53,8 +53,15 @@ const AccommodationsManagement: React.FC = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage] = useState(12);
   const [addNewOpen, setAddNewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Accommodation | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Accommodation | null>(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewTarget, setViewTarget] = useState<Accommodation | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -197,8 +204,8 @@ const AccommodationsManagement: React.FC = () => {
         pricePerNight: parseFloat(formData.pricePerNight),
         currency: formData.currency,
         maxGuests: parseInt(formData.maxGuests),
-        bedrooms: parseInt(formData.bedrooms),
-        bathrooms: parseInt(formData.bathrooms),
+        bedrooms: formData.bedrooms === '' ? 0 : parseInt(formData.bedrooms),
+        bathrooms: formData.bathrooms === '' ? 0 : parseInt(formData.bathrooms),
         amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
       };
@@ -247,6 +254,89 @@ const AccommodationsManagement: React.FC = () => {
       amenities: '',
       images: ''
     });
+  };
+
+  const openEdit = (acc: Accommodation) => {
+    setEditTarget(acc);
+    setFormData({
+      name: acc.name || '',
+      description: acc.description || '',
+      type: acc.type || 'HOTEL',
+      category: acc.category || 'STANDARD',
+      locationId: acc.location?.id || '',
+      address: acc.location?.name || '',
+      pricePerNight: String(acc.pricePerNight ?? ''),
+      currency: acc.currency || 'RWF',
+      maxGuests: String(acc.maxGuests ?? ''),
+      bedrooms: String(acc.bedrooms ?? ''),
+      bathrooms: String(acc.bathrooms ?? ''),
+      amenities: (acc.amenities || []).join(', '),
+      images: (acc.images || []).join(', '),
+    });
+    setEditOpen(true);
+  };
+
+  const handleUpdateAccommodation = async () => {
+    if (!token || !editTarget) return;
+    setUpdating(true);
+    try {
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        type: formData.type,
+        category: formData.category,
+        locationId: formData.locationId,
+        address: formData.address,
+        pricePerNight: parseFloat(formData.pricePerNight),
+        currency: formData.currency,
+        maxGuests: parseInt(formData.maxGuests),
+        bedrooms: formData.bedrooms === '' ? 0 : parseInt(formData.bedrooms),
+        bathrooms: formData.bathrooms === '' ? 0 : parseInt(formData.bathrooms),
+        amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
+        images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
+      };
+      const res = await adminApi.updateAccommodation(token, editTarget.id, payload);
+      if (res.data?.success !== false) {
+        toast({ title: 'Updated', description: 'Accommodation updated successfully' });
+        setEditOpen(false);
+        setEditTarget(null);
+        fetchItems();
+      } else {
+        toast({ title: 'Update failed', description: res.data?.error || 'Failed to update', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Update failed', description: e?.response?.data?.error || e.message || 'Failed to update', variant: 'destructive' });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const confirmDelete = (acc: Accommodation) => {
+    setDeleteTarget(acc);
+  };
+
+  const openView = (acc: Accommodation) => {
+    setViewTarget(acc);
+    setViewOpen(true);
+  };
+
+  const handleDeleteAccommodation = async () => {
+    if (!token || !deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await adminApi.deleteAccommodation(token, deleteTarget.id);
+      if (res.data?.success !== false) {
+        setItems(prev => prev.filter(i => i.id !== deleteTarget.id));
+        toast({ title: 'Deleted', description: 'Accommodation deleted successfully' });
+        setDeleteTarget(null);
+      } else {
+        toast({ title: 'Delete failed', description: res.data?.error || 'Failed to delete', variant: 'destructive' });
+      }
+    } catch (e: any) {
+      toast({ title: 'Delete failed', description: e?.response?.data?.error || e.message || 'Failed to delete', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const exportAccommodations = async () => {
@@ -466,8 +556,11 @@ const AccommodationsManagement: React.FC = () => {
                           <span className="ml-1 text-xs text-gray-500">/ night</span>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="outline"><Edit className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="outline" onClick={() => openView(a)}><Eye className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="outline" onClick={() => openEdit(a)}><Edit className="h-4 w-4" /></Button>
+                          <Button size="sm" variant="outline" className="text-red-600 hover:text-red-700" onClick={() => confirmDelete(a)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                           {!a.isVerified ? (
                             <Button 
                               size="sm" 
@@ -663,6 +756,7 @@ const AccommodationsManagement: React.FC = () => {
                 <Input
                   id="bedrooms"
                   type="number"
+                  min={0}
                   value={formData.bedrooms}
                   onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
                   placeholder="1"
@@ -673,6 +767,7 @@ const AccommodationsManagement: React.FC = () => {
                 <Input
                   id="bathrooms"
                   type="number"
+                  min={0}
                   value={formData.bathrooms}
                   onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
                   placeholder="1"
@@ -711,6 +806,204 @@ const AccommodationsManagement: React.FC = () => {
                 {submitting ? 'Creating...' : 'Create Accommodation'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* View Accommodation Modal */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewTarget?.name || 'Accommodation Details'}</DialogTitle>
+            <DialogDescription>Read-only overview of this accommodation.</DialogDescription>
+          </DialogHeader>
+          {viewTarget && (
+            <div className="space-y-4">
+              {viewTarget.images?.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {viewTarget.images.slice(0, 6).map((src, idx) => (
+                    <img key={idx} src={src} alt={`img-${idx}`} className="w-full h-32 object-cover rounded" />
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Type</Label>
+                  <div className="mt-1 text-sm">{viewTarget.type}</div>
+                </div>
+                <div>
+                  <Label>Category</Label>
+                  <div className="mt-1 text-sm">{viewTarget.category}</div>
+                </div>
+                <div>
+                  <Label>Location</Label>
+                  <div className="mt-1 text-sm">{viewTarget.location?.name} • {viewTarget.location?.city}</div>
+                </div>
+                <div>
+                  <Label>Price / Night</Label>
+                  <div className="mt-1 text-sm">{viewTarget.currency} {viewTarget.pricePerNight?.toLocaleString?.() || viewTarget.pricePerNight}</div>
+                </div>
+                <div>
+                  <Label>Capacity</Label>
+                  <div className="mt-1 text-sm">Guests: {viewTarget.maxGuests} • Bedrooms: {viewTarget.bedrooms} • Bathrooms: {viewTarget.bathrooms}</div>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <div className="mt-1 text-sm">{viewTarget.isVerified ? 'Verified' : 'Unverified'} • {viewTarget.isAvailable ? 'Available' : 'Unavailable'}</div>
+                </div>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <div className="mt-1 text-sm text-gray-700">{viewTarget.description}</div>
+              </div>
+              {viewTarget.amenities?.length > 0 && (
+                <div>
+                  <Label>Amenities</Label>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {viewTarget.amenities.map((am, i) => (
+                      <Badge key={i} variant="outline" className="text-xs">{am}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setViewOpen(false)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      {/* Edit Accommodation Modal */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Accommodation</DialogTitle>
+            <DialogDescription>Update the details and save your changes.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="e_name">Name *</Label>
+                <Input id="e_name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+              </div>
+              <div>
+                <Label htmlFor="e_description">Description *</Label>
+                <Input id="e_description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Type *</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HOTEL">Hotel</SelectItem>
+                    <SelectItem value="GUESTHOUSE">Guesthouse</SelectItem>
+                    <SelectItem value="APARTMENT">Apartment</SelectItem>
+                    <SelectItem value="VILLA">Villa</SelectItem>
+                    <SelectItem value="HOSTEL">Hostel</SelectItem>
+                    <SelectItem value="CAMPING">Camping</SelectItem>
+                    <SelectItem value="HOMESTAY">Homestay</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Category *</Label>
+                <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BUDGET">Budget</SelectItem>
+                    <SelectItem value="STANDARD">Standard</SelectItem>
+                    <SelectItem value="PREMIUM">Premium</SelectItem>
+                    <SelectItem value="LUXURY">Luxury</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Location *</Label>
+                <Select value={formData.locationId} onValueChange={(value) => setFormData({ ...formData, locationId: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map(location => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name} - {location.city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="e_address">Address *</Label>
+                <Input id="e_address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="e_pricePerNight">Price per Night *</Label>
+                <Input id="e_pricePerNight" type="number" value={formData.pricePerNight} onChange={(e) => setFormData({ ...formData, pricePerNight: e.target.value })} required />
+              </div>
+              <div>
+                <Label htmlFor="e_currency">Currency</Label>
+                <Input id="e_currency" value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="e_maxGuests">Max Guests</Label>
+                <Input id="e_maxGuests" type="number" value={formData.maxGuests} onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="e_bedrooms">Bedrooms</Label>
+                <Input id="e_bedrooms" type="number" value={formData.bedrooms} onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="e_bathrooms">Bathrooms</Label>
+                <Input id="e_bathrooms" type="number" value={formData.bathrooms} onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="e_amenities">Amenities (comma-separated)</Label>
+                <Input id="e_amenities" value={formData.amenities} onChange={(e) => setFormData({ ...formData, amenities: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="e_images">Image URLs (comma-separated)</Label>
+                <Input id="e_images" value={formData.images} onChange={(e) => setFormData({ ...formData, images: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button variant="outline" onClick={() => { setEditOpen(false); setEditTarget(null); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateAccommodation} disabled={updating}>
+                {updating ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Accommodation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteAccommodation} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

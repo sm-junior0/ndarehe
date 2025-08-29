@@ -64,12 +64,12 @@ const Transportation = () => {
   });
   const [selectedService, setSelectedService] = useState<Transportation | null>(null);
   const [booking, setBooking] = useState({
-    date: "",
-    time: "",
+    startDate: "",
+    endDate: "",
     passengers: "1",
     pickupLocation: "",
     dropoffLocation: "",
-    serviceType: "trip" // "trip" or "hour"
+    serviceType: "trip" // kept for compatibility; pricing will be days-based
   });
   const [showVerificationReminder, setShowVerificationReminder] = useState(false);
   const { toast } = useToast();
@@ -129,8 +129,8 @@ const Transportation = () => {
   const openBookingModal = (service: Transportation) => {
     setSelectedService(service);
     setBooking({
-      date: "",
-      time: "",
+      startDate: "",
+      endDate: "",
       passengers: "1",
       pickupLocation: "",
       dropoffLocation: "",
@@ -146,6 +146,16 @@ const Transportation = () => {
   const handleBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedService) return;
+
+    // Basic date validation
+    if (!booking.startDate || !booking.endDate) {
+      toast({ title: 'Dates required', description: 'Please select start and end dates.', variant: 'destructive' });
+      return;
+    }
+    if (new Date(booking.endDate) <= new Date(booking.startDate)) {
+      toast({ title: 'Invalid Dates', description: 'End date must be after start date.', variant: 'destructive' });
+      return;
+    }
 
     // Check if user is verified
     if (user && !user.isVerified) {
@@ -168,15 +178,19 @@ const Transportation = () => {
       const response = await bookingsApi.create({
         serviceType: "TRANSPORTATION",
         serviceId: selectedService.id,
-        startDate: booking.date,
-        endDate: booking.date, // Same day for transportation
+        startDate: booking.startDate,
+        endDate: booking.endDate,
         numberOfPeople: parseInt(booking.passengers),
-        specialRequests: `Pickup: ${booking.pickupLocation}, Dropoff: ${booking.dropoffLocation}, Time: ${booking.time}, Service Type: ${booking.serviceType}`
+        specialRequests: `Pickup: ${booking.pickupLocation}, Dropoff: ${booking.dropoffLocation}, Service Type: ${booking.serviceType}`
       });
 
       if (response.success) {
-        const isHour = booking.serviceType === 'hour';
-        const amount = isHour ? (selectedService.pricePerHour || selectedService.pricePerTrip) : selectedService.pricePerTrip;
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const start = new Date(booking.startDate);
+        const end = new Date(booking.endDate);
+        const rawNights = Math.ceil((end.getTime() - start.getTime()) / msPerDay);
+        const days = Math.max(1, rawNights);
+        const amount = days * (selectedService.pricePerTrip || 0);
 
         setIsPaying(true);
 
@@ -413,23 +427,23 @@ const Transportation = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Date</Label>
+                  <Label htmlFor="startDate">Start Date</Label>
                   <Input
-                    id="date"
+                    id="startDate"
                     type="date"
-                    value={booking.date}
-                    onChange={e => setBooking({ ...booking, date: e.target.value })}
+                    value={booking.startDate}
+                    onChange={e => setBooking({ ...booking, startDate: e.target.value })}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="time">Time</Label>
+                  <Label htmlFor="endDate">End Date</Label>
                   <Input
-                    id="time"
-                    type="time"
-                    value={booking.time}
-                    onChange={e => setBooking({ ...booking, time: e.target.value })}
+                    id="endDate"
+                    type="date"
+                    value={booking.endDate}
+                    onChange={e => setBooking({ ...booking, endDate: e.target.value })}
                     className="focus-visible:ring-0 focus-visible:ring-offset-0"
                     required
                   />
@@ -510,18 +524,25 @@ const Transportation = () => {
 
               {/* Live total */}
               {selectedService && (() => {
-                const isHour = booking.serviceType === 'hour';
-                const total = isHour ? (selectedService.pricePerHour || selectedService.pricePerHour) : selectedService.pricePerTrip;
+                const hasDates = booking.startDate && booking.endDate;
+                const msPerDay = 1000 * 60 * 60 * 24;
+                const raw = hasDates ? Math.ceil((new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime()) / msPerDay) : 0;
+                const days = hasDates ? Math.max(1, raw) : 0;
+                const total = days > 0 ? days * (selectedService.pricePerTrip || 0) : 0;
                 return (
                   <div className="bg-secondary/50 p-4 rounded-lg">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="font-medium">Total {isHour ? '(per hour)' : '(per trip)'}</p>
+                        <p className="font-medium">
+                          {days > 0 ? `Total for ${days} day${days > 1 ? 's' : ''}` : 'Total'}
+                        </p>
                         <p className="text-sm text-muted-foreground">
-                          Rate: {selectedService.currency} {selectedService.pricePerHour} {isHour ? 'per hour' : 'per trip'}
+                          Base rate: {selectedService.currency} {(selectedService.pricePerTrip || 0).toLocaleString()} per day
                         </p>
                       </div>
-                      <p className="text-xl font-bold">{selectedService.currency} {total.toLocaleString()}</p>
+                      <p className="text-xl font-bold">
+                        {days > 0 ? `${selectedService.currency} ${total.toLocaleString()}` : 'Select dates'}
+                      </p>
                     </div>
                   </div>
                 );

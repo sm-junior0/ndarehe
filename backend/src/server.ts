@@ -296,7 +296,7 @@ const startServer = async () => {
         ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
       ]);
 
-      // Start automatic cleanup job for expired TEMPORARY bookings
+      // Start automatic cleanup job for expired PENDING bookings
       startCleanupJob();
     });
   } catch (error) {
@@ -305,19 +305,19 @@ const startServer = async () => {
   }
 };
 
-// Automatic cleanup job for expired TEMPORARY bookings
+// Automatic cleanup job for expired PENDING bookings
 const startCleanupJob = () => {
   const cleanupInterval = 15 * 60 * 1000; // 15 minutes
   
   const cleanupExpiredBookings = async () => {
     try {
-      console.log('🧹 Starting automatic cleanup of expired TEMPORARY bookings...');
+      console.log('🧹 Starting automatic cleanup of expired PENDING bookings...');
       
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
       
               const expiredBookings = await prisma.booking.findMany({
           where: {
-            status: 'TEMPORARY' as any,
+            status: 'PENDING' as any,
             createdAt: {
               lt: fifteenMinutesAgo
             }
@@ -327,14 +327,14 @@ const startCleanupJob = () => {
         if (expiredBookings.length > 0) {
           const deleteResult = await prisma.booking.deleteMany({
             where: {
-              status: 'TEMPORARY' as any,
+              status: 'PENDING' as any,
               createdAt: {
                 lt: fifteenMinutesAgo
               }
             }
           });
 
-        console.log(`🧹 Cleaned up ${deleteResult.count} expired TEMPORARY bookings`);
+        console.log(`🧹 Cleaned up ${deleteResult.count} expired PENDING bookings`);
         
         // Log cleanup activity
         await logActivity({
@@ -342,11 +342,11 @@ const startCleanupJob = () => {
           actorUserId: 'SYSTEM',
           targetType: 'BOOKING',
           targetId: 'AUTO_CLEANUP',
-          message: `Automatically cleaned up ${deleteResult.count} expired TEMPORARY bookings`,
-          metadata: { cleanedCount: deleteResult.count, cleanupType: 'AUTO_EXPIRED_TEMPORARY' },
+          message: `Automatically cleaned up ${deleteResult.count} expired PENDING bookings`,
+          metadata: { cleanedCount: deleteResult.count, cleanupType: 'AUTO_EXPIRED_PENDING' },
         }).catch(() => {});
       } else {
-        console.log('🧹 No expired TEMPORARY bookings found');
+        console.log('🧹 No expired PENDING bookings found');
       }
     } catch (error) {
       console.error('❌ Cleanup job error:', error);
