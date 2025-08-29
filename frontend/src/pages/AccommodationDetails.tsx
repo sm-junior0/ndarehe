@@ -269,7 +269,7 @@ const AccommodationDetails = () => {
       hasKitchen: true, // Some units have kitchen
       specialNotes: "Kitchen available in some units. Check room types for details."
     },
-    "Ndaru Luxury Suites by Le Muguet": {
+    "Ndaru Luxury Suites": {
       roomTypes: [
         { name: "Executive suite", price: 185, description: "1 queen bed" },
         { name: "Deluxe Apartment", price: 230, description: "1 queen bed , 1 king bed" },
@@ -951,7 +951,6 @@ const AccommodationDetails = () => {
                   value={booking.specialRequests}
                   onChange={e => setBooking({ ...booking, specialRequests: e.target.value })}
                   className="flex h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="Any special requirements..."
                 />
               </div>
 

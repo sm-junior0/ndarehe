@@ -459,7 +459,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                       <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
                     </button>
                     <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider === 'MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
-                      <img src="/logos/momo.svg" alt="MTN MoMo" className="h-6" />
+                      <img src="/logos/momo.jpg" alt="MTN MoMo" className="h-6" />
                     </button>
                   </div>
                 </div>

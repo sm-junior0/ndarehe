@@ -87,7 +87,7 @@ const AccommodationsManagement: React.FC = () => {
 
   const fetchLocations = async () => {
     if (!token) return;
-    
+
     try {
       const response = await adminApi.getLocations(token);
       if (response.data.success) {
@@ -100,14 +100,14 @@ const AccommodationsManagement: React.FC = () => {
 
   const fetchItems = async () => {
     if (!token) return;
-    
+
     setLoading(true);
     try {
       const params: any = {
         page: currentPage,
         limit: itemsPerPage
       };
-      
+
       if (searchTerm) params.search = searchTerm;
       if (typeFilter !== 'all') params.type = typeFilter;
       if (categoryFilter !== 'all') params.category = categoryFilter;
@@ -119,7 +119,7 @@ const AccommodationsManagement: React.FC = () => {
       if (response.data.success) {
         const data = response.data.data;
         const list = Array.isArray(data?.accommodations) ? data.accommodations : [];
-        
+
         // Map to local shape
         const shaped: Accommodation[] = list.map((a: any) => ({
           id: a.id,
@@ -140,9 +140,9 @@ const AccommodationsManagement: React.FC = () => {
           rating: a.rating,
           totalReviews: a.totalReviews,
         }));
-        
+
         setItems(shaped);
-        
+
         if (data.pagination) {
           setTotalPages(data.pagination.totalPages);
           setTotalItems(data.pagination.totalItems);
@@ -162,18 +162,18 @@ const AccommodationsManagement: React.FC = () => {
 
   const handleVerifyAccommodation = async (accommodationId: string, isVerified: boolean) => {
     if (!token) return;
-    
+
     try {
       const response = await adminApi.verifyAccommodation(token, accommodationId, isVerified);
-      
+
       if (response.data.success) {
         // Update local state
-        setItems(items.map(item => 
-          item.id === accommodationId 
+        setItems(items.map(item =>
+          item.id === accommodationId
             ? { ...item, isVerified }
             : item
         ));
-        
+
         toast({
           title: 'Success',
           description: `Accommodation ${isVerified ? 'verified' : 'unverified'} successfully`,
@@ -191,9 +191,12 @@ const AccommodationsManagement: React.FC = () => {
 
   const handleCreateAccommodation = async () => {
     if (!token) return;
-    
+
     setSubmitting(true);
     try {
+      const bedroomsValue = formData.bedrooms === '' ? 0 : parseInt(formData.bedrooms);
+      const isAvailable = determineAvailability(bedroomsValue, true); // New accommodations with bedrooms > 0 are available
+
       const payload = {
         name: formData.name,
         description: formData.description,
@@ -208,10 +211,11 @@ const AccommodationsManagement: React.FC = () => {
         bathrooms: formData.bathrooms === '' ? 0 : parseInt(formData.bathrooms),
         amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
+        isAvailable: isAvailable,
       };
 
       const response = await adminApi.createAccommodation(token, payload);
-      
+
       if (response.data.success) {
         toast({
           title: 'Success',
@@ -280,6 +284,10 @@ const AccommodationsManagement: React.FC = () => {
     if (!token || !editTarget) return;
     setUpdating(true);
     try {
+
+      const bedroomsValue = formData.bedrooms === '' ? 0 : parseInt(formData.bedrooms);
+      const isAvailable = determineAvailability(bedroomsValue, editTarget.isAvailable);
+
       const payload = {
         name: formData.name,
         description: formData.description,
@@ -294,6 +302,7 @@ const AccommodationsManagement: React.FC = () => {
         bathrooms: formData.bathrooms === '' ? 0 : parseInt(formData.bathrooms),
         amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
+        isAvailable: isAvailable,
       };
       const res = await adminApi.updateAccommodation(token, editTarget.id, payload);
       if (res.data?.success !== false) {
@@ -341,13 +350,13 @@ const AccommodationsManagement: React.FC = () => {
 
   const exportAccommodations = async () => {
     if (!token) return;
-    
+
     try {
       // Fetch all accommodations for export (without pagination)
       const response = await adminApi.getAccommodations(token, { limit: 1000 });
       if (response.data.success) {
         const allAccommodations = response.data.data.accommodations || [];
-        
+
         const csvContent = [
           ['ID', 'Name', 'Type', 'Category', 'Location', 'Price/Night', 'Currency', 'Max Guests', 'Bedrooms', 'Bathrooms', 'Verified', 'Available'],
           ...allAccommodations.map((acc: any) => [
@@ -370,12 +379,12 @@ const AccommodationsManagement: React.FC = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `accommodations-export-${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `accommodations-export-${new Date().toISOString().slice(0, 10)}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         toast({
           title: 'Success',
           description: 'Accommodations exported successfully',
@@ -419,6 +428,14 @@ const AccommodationsManagement: React.FC = () => {
     );
   }
 
+  // Helper function to determine availability
+  const determineAvailability = (bedrooms: number, currentAvailability: boolean) => {
+    // If bedrooms is 0, accommodation is not available
+    if (bedrooms === 0) return false;
+    // If bedrooms > 0, maintain current availability status
+    return currentAvailability;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -445,12 +462,12 @@ const AccommodationsManagement: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search by name or city" 
-                value={searchTerm} 
+              <Input
+                placeholder="Search by name or city"
+                value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="pl-10" 
+                className="pl-10"
               />
             </div>
             <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); handleFilterChange(); }}>
@@ -545,7 +562,13 @@ const AccommodationsManagement: React.FC = () => {
                         </div>
                         <div className="flex gap-2">
                           <Badge variant={a.isVerified ? 'default' : 'secondary'}>{a.isVerified ? 'Verified' : 'Unverified'}</Badge>
-                          {a.isAvailable ? <Badge variant="outline">Available</Badge> : <Badge variant="destructive">Unavailable</Badge>}
+                          {a.bedrooms === 0 ? (
+                            <Badge variant="destructive">Full</Badge>
+                          ) : a.isAvailable ? (
+                            <Badge variant="outline">Available</Badge>
+                          ) : (
+                            <Badge variant="destructive">Unavailable</Badge>
+                          )}
                         </div>
                       </div>
                       <div className="text-sm line-clamp-2 text-gray-600">{a.description}</div>
@@ -562,18 +585,18 @@ const AccommodationsManagement: React.FC = () => {
                             <Trash2 className="h-4 w-4" />
                           </Button>
                           {!a.isVerified ? (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               className="text-green-600 hover:text-green-700"
                               onClick={() => handleVerifyAccommodation(a.id, true)}
                             >
                               <CheckCircle className="h-4 w-4" />
                             </Button>
                           ) : (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+                            <Button
+                              size="sm"
+                              variant="outline"
                               className="text-red-600 hover:text-red-700"
                               onClick={() => handleVerifyAccommodation(a.id, false)}
                             >
@@ -594,9 +617,9 @@ const AccommodationsManagement: React.FC = () => {
                     Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} accommodations
                   </div>
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      disabled={currentPage <= 1} 
+                    <Button
+                      variant="outline"
+                      disabled={currentPage <= 1}
                       onClick={() => handlePageChange(currentPage - 1)}
                     >
                       Previous
@@ -604,9 +627,9 @@ const AccommodationsManagement: React.FC = () => {
                     <span className="flex items-center px-3 text-sm text-gray-500">
                       Page {currentPage} of {totalPages}
                     </span>
-                    <Button 
-                      variant="outline" 
-                      disabled={currentPage >= totalPages} 
+                    <Button
+                      variant="outline"
+                      disabled={currentPage >= totalPages}
                       onClick={() => handlePageChange(currentPage + 1)}
                     >
                       Next
@@ -761,6 +784,9 @@ const AccommodationsManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
                   placeholder="1"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Set to 0 to mark this accommodation as full
+                </p>
               </div>
               <div>
                 <Label htmlFor="bathrooms">Bathrooms</Label>
@@ -848,7 +874,11 @@ const AccommodationsManagement: React.FC = () => {
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <div className="mt-1 text-sm">{viewTarget.isVerified ? 'Verified' : 'Unverified'} • {viewTarget.isAvailable ? 'Available' : 'Unavailable'}</div>
+                  <div className="mt-1 text-sm">
+                    {viewTarget.isVerified ? 'Verified' : 'Unverified'} •
+                    {viewTarget.bedrooms === 0 ? ' Full' : viewTarget.isAvailable ? ' Available' : ' Unavailable'}
+                    {viewTarget.bedrooms === 0 && ` (${viewTarget.bedrooms} bedrooms)`}
+                  </div>
                 </div>
               </div>
               <div>
@@ -961,7 +991,17 @@ const AccommodationsManagement: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="e_bedrooms">Bedrooms</Label>
-                <Input id="e_bedrooms" type="number" value={formData.bedrooms} onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })} />
+                <Input
+                  id="e_bedrooms"
+                  type="number"
+                  min={0}
+                  value={formData.bedrooms}
+                  onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Set to 0 to mark this accommodation as full (will change status to "Full")
+                </p>
               </div>
               <div>
                 <Label htmlFor="e_bathrooms">Bathrooms</Label>
