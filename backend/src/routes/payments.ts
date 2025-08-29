@@ -191,8 +191,7 @@ async function adjustAccommodationAvailability(bookingId: string) {
 // @route   POST /api/payments/flutterwave
 // @access  Public (but should be protected in production)
 router.post("/flutterwave", async (req, res) => {
-  try {
-    const { bookingId, amount, currency, customer } = req.body;
+  const { bookingId, amount, currency, customer } = req.body;
 
     // Validate required parameters
     if (!bookingId || !amount || !currency || !customer) {
@@ -229,88 +228,71 @@ router.post("/flutterwave", async (req, res) => {
       });
     }
 
-    const tx_ref = `ACCOM-${bookingId}-${Date.now()}`;
+  const tx_ref = `ACCOM-${bookingId}-${Date.now()}`;
 
+  try {
     console.log(`[Payment] Initializing Flutterwave payment for booking ${bookingId}`);
-    
+    console.log(`[Payment] Amount: ${amount} ${currency}`);
+    console.log(`[Payment] Customer: ${customer.name} (${customer.email})`);
+    console.log(`[Payment] Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`[Payment] Backend URL: ${process.env.BACKEND_URL || 'localhost:5000'}`);
+
     const payload = {
       tx_ref,
-      amount: parseFloat(amount),
+      amount,
       currency,
       redirect_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/payments/flutterwave/verify`,
-      customer: {
-        email: customer.email,
-        phonenumber: customer.phonenumber || "",
-        name: customer.name
-      },
-      customizations: {
-        title: "Accommodation Booking",
-        description: `Payment for booking ${bookingId}`,
-        logo: process.env.COMPANY_LOGO_URL || ""
-      },
+      customer,
       meta: { bookingId },
-      payment_options: "card, mobilemoney, banktransfer"
-    };
+      payment_type: customer.phonenumber ? "mobilemoney" : "card"
+    } as const;
 
     const response = await initializePayment(payload);
-    console.log('[Payment] Flutterwave response received:', JSON.stringify(response, null, 2));
+
+    // Fetch booking and user to satisfy required relations for PaymentCreateInput
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { user: true }
+    });
+
+    if (!booking || !booking.user) {
+      return res.status(404).json({ success: false, message: "Booking or user not found" });
+    }
 
     // Create payment record
     await prisma.payment.create({
       data: {
-        bookingId,
-        userId: booking.userId,
+        booking: { connect: { id: bookingId } },
+        user: { connect: { id: booking.user.id } },
         method: customer.phonenumber ? "MOBILE_MONEY" : "CARD",
         transactionId: tx_ref,
-        amount: parseFloat(amount),
+        amount,
         currency,
         status: "PENDING"
       }
     });
 
     // Extract payment link from Flutterwave response
-    // Flutterwave returns: { status: "success", message: "Hosted Link", data: { link: "..." } }
-    const link = response?.data?.link || response?.link;
+    const link = (response?.data?.link) || response?.link;
 
-    if (!link) {
-      console.error('[Payment] No payment link in Flutterwave response:', response);
-      return res.status(500).json({ 
-        success: false, 
-        message: "Failed to generate payment link from Flutterwave" 
-      });
+    if (link) {
+      console.log(`[Payment] ✅ Flutterwave payment link generated: ${link}`);
+      console.log(`[Payment] Transaction reference: ${tx_ref}`);
+      console.log(`[Payment] Booking ID: ${bookingId}`);
+      console.log(`[Payment] Redirect URL: ${payload.redirect_url}`);
+    } else {
+      console.error('[Payment] ❌ No payment link in Flutterwave response:', response);
+      return res.status(500).json({ success: false, message: "Failed to generate payment link" });
     }
 
-    console.log(`[Payment] Payment link generated for tx_ref: ${tx_ref}`);
-    
-    return res.json({ 
-      success: true, 
-      link, 
-      tx_ref,
-      amount,
-      currency
-    });
+    return res.json({ success: true, link, tx_ref });
   } catch (error) {
-    console.error("Flutterwave payment initialization error:", error);
-    
-    let errorMessage = "Payment initialization failed";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null && 'message' in error) {
-      errorMessage = String((error as any).message);
-    }
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: errorMessage
-    });
+    console.error("Flutterwave payment error:", error);
+    return res.status(500).json({ success: false, message: "Payment initialization failed" });
   }
 });
 
-
-
-// @desc    Get payment by ID
-// @route   GET /api/payments/:id
-// @access  Private
+// Verify payment - redirect handler for Flutterwave return
 router.get("/verify", async (req, res) => {
   const { tx_ref } = req.query;
 
@@ -368,14 +350,17 @@ router.get("/verify", async (req, res) => {
         });
       }
 
-      // Always redirect to the deployed frontend URL, not localhost
-      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/success?bookingId=${bookingId}`;
+      const redirectUrl = process.env.NODE_ENV === 'production' 
+        ? `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`
+        : `http://localhost:5173/booking/success?bookingId=${bookingId}`;
       
       console.log(`[Payment] Redirecting to: ${redirectUrl}`);
       return res.redirect(redirectUrl);
     } else {
       console.log(`[Payment] ❌ Payment verification failed for tx_ref: ${tx_ref}`);
-      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/failed`;
+      const redirectUrl = process.env.NODE_ENV === 'production'
+        ? `${process.env.BASE_URL}/booking/failed`
+        : `http://localhost:5173/booking/failed`;
       return res.redirect(redirectUrl);
     }
   } catch (error) {
@@ -384,9 +369,7 @@ router.get("/verify", async (req, res) => {
   }
 });
 
-// @desc    Get user payments
-// @route   GET /api/payments
-// @access  Private
+// JSON verification endpoint for AJAX polling from frontend
 router.get("/verify-json", async (req, res) => {
   const { tx_ref } = req.query;
   if (!tx_ref || typeof tx_ref !== "string") {
@@ -510,14 +493,17 @@ router.get("/flutterwave/verify", async (req, res) => {
         });
       }
       
-      // Always redirect to the deployed frontend URL, not localhost
-      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/success?bookingId=${bookingId}`;
+      const redirectUrl = process.env.NODE_ENV === 'production' 
+        ? `${process.env.BASE_URL}/booking/success?bookingId=${bookingId}`
+        : `http://localhost:5173/booking/success?bookingId=${bookingId}`;
       
       console.log(`[Payment] Redirecting to: ${redirectUrl}`);
       return res.redirect(redirectUrl);
     } else {
       console.log(`[Payment] ❌ Flutterwave verification failed for tx_ref: ${tx_ref}`);
-      const redirectUrl = `${process.env.BASE_URL || 'https://ndarehe.vercel.app'}/booking/failed`;
+      const redirectUrl = process.env.NODE_ENV === 'production'
+        ? `${process.env.BASE_URL}/booking/failed`
+        : `http://localhost:5173/booking/failed`;
       return res.redirect(redirectUrl);
     }
   } catch (error) {
@@ -591,65 +577,5 @@ router.get("/flutterwave/verify-json", async (req, res) => {
   }
 });
 
-
-// Add to your payment routes
-router.get("/config", async (req, res) => {
-  try {
-    const config = {
-      flwPublicKey: process.env.FLW_PUBLIC_KEY ? "Set" : "Missing",
-      flwSecretKey: process.env.FLW_SECRET_KEY ? "Set" : "Missing",
-      backendUrl: process.env.BACKEND_URL || "Not set",
-      nodeEnv: process.env.NODE_ENV || "Not set",
-      baseUrl: process.env.BASE_URL || "Not set"
-    };
-    
-    console.log('Payment configuration check:', config);
-    
-    return res.json({
-      success: true,
-      message: "Configuration check",
-      data: config
-    });
-  } catch (error) {
-    console.error('Config check error:', error);
-    return res.status(500).json({
-      success: false,
-      message: "Configuration check failed"
-    });
-  }
-});
-
-router.get("/test-flutterwave", async (req, res) => {
-  try {
-    // Test Flutterwave connection with a minimal request
-    const testPayload = {
-      tx_ref: `TEST-${Date.now()}`,
-      amount: 100,
-      currency: 'RWF',
-      customer: {
-        email: 'test@example.com',
-        name: 'Test User'
-      },
-      payment_options: 'card'
-    };
-
-    console.log('Testing Flutterwave connection with payload:', testPayload);
-    
-    const response = await initializePayment(testPayload);
-    
-    return res.json({
-      success: true,
-      message: "Flutterwave connection test successful",
-      data: response
-    });
-  } catch (error: any) {
-    console.error('Flutterwave test error:', error);
-    return res.status(500).json({
-      success: false,
-      message: "Flutterwave connection test failed",
-      error: error.message
-    });
-  }
-});
-
 export default router;
+

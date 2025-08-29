@@ -302,9 +302,9 @@ const Transportation = () => {
         </div>
 
         <div className="text-center mb-8 mt-8">
-            <h2 className="text-2xl font-bold mb-2">Choose Your Vehicle</h2>
-            <p className="text-muted-foreground">Select the perfect vehicle for your transportation</p>
-          </div>
+          <h2 className="text-2xl font-bold mb-2">Choose Your Vehicle</h2>
+          <p className="text-muted-foreground">Select the perfect vehicle for your transportation</p>
+        </div>
       </div>
 
       {/* Error Display */}
@@ -361,17 +361,9 @@ const Transportation = () => {
                 <div className="flex gap-2 text-sm">
                   <span className="font-semibold">Per Trip:</span>
                   <span className="font-medium">
-                    {service.pricePerTrip.toLocaleString()} {service.currency}
+                    {service.pricePerHour.toLocaleString()} {service.currency}
                   </span>
                 </div>
-                {service.pricePerHour && (
-                  <div className="flex justify-between text-sm">
-                    <span>Per Hour:</span>
-                    <span className="font-medium">
-                      {service.pricePerHour.toLocaleString()} {service.currency}
-                    </span>
-                  </div>
-                )}
               </div>
 
               <div className="flex justify-between items-center">
@@ -580,7 +572,7 @@ const Transportation = () => {
                 {/* Step 2: Verify Payment */}
                 {txRef && (
                   <div className="space-y-2">
-                    <Button 
+                    <Button
                       type="button"
                       variant="secondary"
                       className="w-full"
@@ -624,9 +616,9 @@ const Transportation = () => {
               </div>
 
               {/* Confirm after verification */}
-              <Button 
-                type="button" 
-                className="w-full" 
+              <Button
+                type="button"
+                className="w-full"
                 disabled={!paymentVerified}
                 variant={paymentVerified ? "default" : "secondary"}
                 onClick={() => setSuccess(true)}
