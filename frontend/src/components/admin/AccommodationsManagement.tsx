@@ -204,8 +204,8 @@ const AccommodationsManagement: React.FC = () => {
         pricePerNight: parseFloat(formData.pricePerNight),
         currency: formData.currency,
         maxGuests: parseInt(formData.maxGuests),
-        bedrooms: parseInt(formData.bedrooms),
-        bathrooms: parseInt(formData.bathrooms),
+        bedrooms: formData.bedrooms === '' ? 0 : parseInt(formData.bedrooms),
+        bathrooms: formData.bathrooms === '' ? 0 : parseInt(formData.bathrooms),
         amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
       };
@@ -290,8 +290,8 @@ const AccommodationsManagement: React.FC = () => {
         pricePerNight: parseFloat(formData.pricePerNight),
         currency: formData.currency,
         maxGuests: parseInt(formData.maxGuests),
-        bedrooms: parseInt(formData.bedrooms),
-        bathrooms: parseInt(formData.bathrooms),
+        bedrooms: formData.bedrooms === '' ? 0 : parseInt(formData.bedrooms),
+        bathrooms: formData.bathrooms === '' ? 0 : parseInt(formData.bathrooms),
         amenities: formData.amenities.split(',').map(s => s.trim()).filter(Boolean),
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
       };
@@ -756,6 +756,7 @@ const AccommodationsManagement: React.FC = () => {
                 <Input
                   id="bedrooms"
                   type="number"
+                  min={0}
                   value={formData.bedrooms}
                   onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
                   placeholder="1"
@@ -766,6 +767,7 @@ const AccommodationsManagement: React.FC = () => {
                 <Input
                   id="bathrooms"
                   type="number"
+                  min={0}
                   value={formData.bathrooms}
                   onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
                   placeholder="1"

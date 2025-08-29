@@ -374,41 +374,15 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response, next: NextF
 // @desc    Create accommodation (Admin/Provider only)
 // @route   POST /api/accommodations
 // @access  Private
-router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodationSchemas.create), async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const {
-      name,
-      description,
-      type,
-      category,
-      locationId,
-      address,
-      phone,
-      email,
-      website,
-      pricePerNight,
-      currency,
-      maxGuests,
-      bedrooms,
-      bathrooms,
-      amenities,
-      images
-    } = req.body;
-
-    // Verify location exists
-    const location = await prisma.location.findUnique({
-      where: { id: locationId }
-    });
-
-    if (!location) {
-      return res.status(400).json({
-        success: false,
-        error: 'Location not found'
-      });
-    }
-
-    const accommodation = await prisma.accommodation.create({
-      data: {
+router.post(
+  '/',
+  protect,
+  authorize('ADMIN', 'PROVIDER'),
+  validate(accommodationSchemas.create),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    console.log('Incoming accommodation data:', req.body); // 👈 Add this line
+    try {
+      const {
         name,
         description,
         type,
@@ -418,58 +392,92 @@ router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodation
         phone,
         email,
         website,
-        pricePerNight: parseFloat(pricePerNight),
+        pricePerNight,
         currency,
-        maxGuests: parseInt(maxGuests),
-        bedrooms: parseInt(bedrooms),
-        bathrooms: parseInt(bathrooms),
-        amenities: amenities || [],
-        images: images || [],
-        // Partner fields if provided
-        isPartner: req.body.isPartner ?? false,
-        partnerName: req.body.partnerName ?? null,
-        partnerContact: req.body.partnerContact ?? null,
-        partnerNotes: req.body.partnerNotes ?? null
-      },
-      include: {
-        location: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            district: true,
-            province: true
+        maxGuests,
+        bedrooms,
+        bathrooms,
+        amenities,
+        images
+      } = req.body;
+
+      // Verify location exists
+      const location = await prisma.location.findUnique({
+        where: { id: locationId }
+      });
+
+      if (!location) {
+        return res.status(400).json({
+          success: false,
+          error: 'Location not found'
+        });
+      }
+
+      const accommodation = await prisma.accommodation.create({
+        data: {
+          name,
+          description,
+          type,
+          category,
+          locationId,
+          address,
+          phone,
+          email,
+          website,
+          pricePerNight: parseFloat(pricePerNight),
+          currency,
+          maxGuests: parseInt(maxGuests),
+          bedrooms: parseInt(bedrooms),
+          bathrooms: parseInt(bathrooms),
+          amenities: amenities || [],
+          images: images || [],
+          // Partner fields if provided
+          isPartner: req.body.isPartner ?? false,
+          partnerName: req.body.partnerName ?? null,
+          partnerContact: req.body.partnerContact ?? null,
+          partnerNotes: req.body.partnerNotes ?? null
+        },
+        include: {
+          location: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              district: true,
+              province: true
+            }
           }
         }
-      }
-    });
-
-    // Log activity
-    try {
-      const actorId = (req as any).user?.id as string | undefined;
-      await logActivity({
-        type: ActivityType.ACCOMMODATION_CREATED,
-        actorUserId: actorId || null,
-        targetType: 'ACCOMMODATION',
-        targetId: accommodation.id,
-        message: `Accommodation added: ${accommodation.name}`,
       });
-    } catch {}
 
-    res.status(201).json({
-      success: true,
-      message: 'Accommodation created successfully',
-      data: { accommodation }
-    });
-  } catch (error) {
-    next(error);
+      // Log activity
+      try {
+        const actorId = (req as any).user?.id as string | undefined;
+        await logActivity({
+          type: ActivityType.ACCOMMODATION_CREATED,
+          actorUserId: actorId || null,
+          targetType: 'ACCOMMODATION',
+          targetId: accommodation.id,
+          message: `Accommodation added: ${accommodation.name}`,
+        });
+      } catch {}
+
+      res.status(201).json({
+        success: true,
+        message: 'Accommodation created successfully',
+        data: { accommodation }
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 // @desc    Update accommodation (Admin/Provider only)
 // @route   PUT /api/accommodations/:id
 // @access  Private
 router.put('/:id', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodationSchemas.update), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log('Update accommodation data:', req.body); // 👈 Add this line
   try {
     const { id } = req.params;
     const updateData: any = { ...req.body };
@@ -706,4 +714,4 @@ router.get('/categories', async (req: Request, res: Response, next: NextFunction
   }
 });
 
-export default router; 
+export default router;

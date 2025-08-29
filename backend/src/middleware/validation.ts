@@ -5,6 +5,7 @@ import { AppError } from '../types';
 // Validation middleware
 export const validate = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
+    console.log("Validating with schema:", schema.describe()); // 👀
     const { error } = schema.validate(req.body);
     
     if (error) {
@@ -86,8 +87,8 @@ export const accommodationSchemas = {
     pricePerNight: Joi.number().positive().required(),
     currency: Joi.string().default('RWF'),
     maxGuests: Joi.number().integer().positive().required(),
-    bedrooms: Joi.number().integer().positive().required(),
-    bathrooms: Joi.number().integer().positive().required(),
+    bedrooms: Joi.number().integer().min(0).required(),
+    bathrooms: Joi.number().integer().min(0).required(),
     amenities: Joi.array().items(Joi.string()).optional(),
     images: Joi.array().items(Joi.string().uri()).optional(),
     // Partner fields (optional)
