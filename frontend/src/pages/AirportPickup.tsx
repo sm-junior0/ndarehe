@@ -69,7 +69,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   });
   const [showVerificationReminder, setShowVerificationReminder] = useState(false);
 
-    // Added for Flutterwave flow
+  // Added for Flutterwave flow
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [flutterwaveLink, setFlutterwaveLink] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string | null>(null);
@@ -126,6 +126,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
     e.preventDefault();
     if (!selectedCar) return;
 
+
     if (user && !user.isVerified) {
       setShowVerificationReminder(true);
       return;
@@ -153,7 +154,9 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
       });
 
       if (response.success) {
-        const amount = selectedCar.pricePerTrip;
+        const baseAmount = selectedCar.pricePerTrip;
+        const stripeFee = baseAmount * 0.05; // 5% Stripe fee
+        const amount = baseAmount + stripeFee;
 
         setIsPaying(true);
 
@@ -465,9 +468,20 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-medium">Total</p>
-                      <p className="text-sm text-muted-foreground">Includes all taxes and fees</p>
+                      <p className="text-sm text-muted-foreground">
+                        Base: {selectedCar.currency} {selectedCar.pricePerTrip.toLocaleString()}
+                        <br />
+                        Stripe fee (5%): {selectedCar.currency} {(selectedCar.pricePerTrip * 0.05).toLocaleString()}
+                        <br />
+                        Includes all taxes and fees
+                      </p>
                     </div>
-                    <p className="text-xl font-bold">{selectedCar.currency} {selectedCar.pricePerTrip.toLocaleString()}</p>
+                    <div className="text-right">
+                      <p className="text-xl font-bold">
+                        {selectedCar.currency} {(selectedCar.pricePerTrip * 1.05).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Includes 5% fee</p>
+                    </div>
                   </div>
                 </div>
 
@@ -495,11 +509,11 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                   {/* Step 2: Verify Payment */}
                   {txRef && (
                     <div className="space-y-2">
-                      <Button 
-                        type="button" 
-                        variant="secondary" 
+                      <Button
+                        type="button"
+                        variant="secondary"
                         className="w-full"
-                        onClick={verifyPayment} 
+                        onClick={verifyPayment}
                         disabled={isPaying || paymentVerified}
                       >
                         {isPaying ? (
@@ -539,9 +553,9 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                 </div>
 
                 {/* Confirm after verification */}
-                <Button 
-                  type="button" 
-                  className="w-full" 
+                <Button
+                  type="button"
+                  className="w-full"
                   disabled={!paymentVerified}
                   variant={paymentVerified ? "default" : "secondary"}
                   onClick={() => setConfirmed(true)}

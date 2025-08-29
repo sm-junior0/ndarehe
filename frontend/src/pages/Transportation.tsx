@@ -190,7 +190,9 @@ const Transportation = () => {
         const end = new Date(booking.endDate);
         const rawNights = Math.ceil((end.getTime() - start.getTime()) / msPerDay);
         const days = Math.max(1, rawNights);
-        const amount = days * (selectedService.pricePerTrip || 0);
+        const baseAmount = days * (selectedService.pricePerTrip || 0);
+        const stripeFee = baseAmount * 0.05; // 5% Stripe fee
+        const amount = baseAmount + stripeFee;
 
         setIsPaying(true);
 
@@ -528,7 +530,9 @@ const Transportation = () => {
                 const msPerDay = 1000 * 60 * 60 * 24;
                 const raw = hasDates ? Math.ceil((new Date(booking.endDate).getTime() - new Date(booking.startDate).getTime()) / msPerDay) : 0;
                 const days = hasDates ? Math.max(1, raw) : 0;
-                const total = days > 0 ? days * (selectedService.pricePerTrip || 0) : 0;
+                const baseTotal = days > 0 ? days * (selectedService.pricePerTrip || 0) : 0;
+                const stripeFee = baseTotal * 0.05;
+                const total = baseTotal + stripeFee;
                 return (
                   <div className="bg-secondary/50 p-4 rounded-lg">
                     <div className="flex justify-between items-center">
@@ -538,10 +542,19 @@ const Transportation = () => {
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Base rate: {selectedService.currency} {(selectedService.pricePerTrip || 0).toLocaleString()} per day
+                          {days > 0 && (
+                            <>
+                              <br />
+                              Base: {selectedService.currency} {baseTotal.toLocaleString()}
+                              <br />
+                              Stripe fee (5%): {selectedService.currency} {stripeFee.toLocaleString()}
+                            </>
+                          )}
                         </p>
                       </div>
                       <p className="text-xl font-bold">
                         {days > 0 ? `${selectedService.currency} ${total.toLocaleString()}` : 'Select dates'}
+                        {days > 0 && <span className="text-sm block text-muted-foreground">Includes 5% fee</span>}
                       </p>
                     </div>
                   </div>

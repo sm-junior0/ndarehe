@@ -99,7 +99,7 @@ const DistanceInfo = ({ accommodationName, location }: DistanceInfoProps) => {
       "Great Seasons Hotel": { km: 11.3, time: "18-23 min" },
       "Vista Luxury Apartment": { km: 11.5, time: "19-24 min" }
     };
-    
+
     return distances[accommodationName] || { km: 12, time: "20-25 min" };
   };
 
@@ -123,20 +123,20 @@ const DistanceInfo = ({ accommodationName, location }: DistanceInfoProps) => {
             <div className="text-sm text-muted-foreground">to Kigali International Airport</div>
             <div className="text-xs mt-1 text-green-600">({distanceToAirport.time} drive)</div>
           </div>
-          
+
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <div className="text-2xl font-bold text-blue-700">{distanceToCityCenter} km</div>
             <div className="text-sm text-muted-foreground">to Kigali City Center</div>
             <div className="text-xs mt-1 text-blue-600">(15-20 min drive)</div>
           </div>
-          
+
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <div className="text-2xl font-bold text-purple-700">{distanceToConvention} km</div>
             <div className="text-sm text-muted-foreground">to Kigali Convention Centre</div>
             <div className="text-xs mt-1 text-purple-600">(18-22 min drive)</div>
           </div>
         </div>
-        
+
         <div className="mt-4 text-xs text-muted-foreground">
           <p>Note: Distances are approximate and may vary based on traffic conditions.</p>
         </div>
@@ -216,251 +216,253 @@ const AccommodationDetails = () => {
   }, [id]);
 
 
-// Hotel-specific details mapping
-const hotelDetailsMap: Record<string, {
-  roomTypes: Array<{ name: string; price: number; description?: string }>;
-  hasFreeAirportPickup: boolean;
-  hasInclusiveBreakfast: boolean;
-  hasKitchen: boolean;
-  specialNotes: string;
-}> = {
-  "Great Seasons Hotel": {
-    roomTypes: [
-      { name: "Standard", price: 70, description: "Comfortable standard room" },
-      { name: "Junior Suite", price: 100, description: "Spacious junior suite" },
-      { name: "Superior", price: 150, description: "Premium superior room" }
-    ],
-    hasFreeAirportPickup: true,
-    hasInclusiveBreakfast: true,
-    hasKitchen: false,
-    specialNotes: "All room types include breakfast and free airport pickup. No kitchen facilities available."
-  },
-  "Highlands Suites Hotel": {
-    roomTypes: [
-      { name: "2 Bedroom", price: 180, description: "Two bedroom suite" },
-      { name: "Single", price: 100, description: "Single room" }
-    ],
-    hasFreeAirportPickup: false, // $25 charge
-    hasInclusiveBreakfast: true,
-    hasKitchen: false,
-    specialNotes: "Includes breakfast. Airport pickup available for $25."
-  },
-  "Vista Luxury Apartment": {
-    roomTypes: [
-      { name: "2 Bedroom", price: 100, description: "5 units available with kitchen" },
-      { name: "1 Bedroom", price: 80, description: "1 unit with kitchen" }
-    ],
-    hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: false,
-    hasKitchen: true,
-    specialNotes: "Kitchen available in all units. No free airport pickup or inclusive breakfast."
-  },
-  "Grazia Apartment Hotel": {
-    roomTypes: [
-      { name: "2 Bedroom with Kitchen", price: 300, description: "With kitchen facilities" },
-      { name: "1 Bedroom with Kitchen", price: 200, description: "With kitchen facilities" },
-      { name: "1 Bedroom without Kitchen", price: 110, description: "Standard room" },
-      { name: "Standard", price: 119, description: "Basic standard room" },
-      { name: "Twin", price: 160, description: "Twin beds" },
-      { name: "Superior Double", price: 150, description: "Premium double room" }
-    ],
-    hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: false,
-    hasKitchen: true, // Some units have kitchen
-    specialNotes: "Kitchen available in some units. Check room types for details."
-  },
-  "Ndaru Luxury Suites by Le Muguet": {
-    roomTypes: [
-      { name: "Executive suite", price: 185, description: "1 queen bed" },
-      { name: "Deluxe Apartment", price: 230, description: "1 queen bed , 1 king bed" },
-      { name: "Deluxe Double Room", price: 104, description: "1 queen bed" },
-      { name: "Deluxe Twin Room", price: 114, description: "2 twins beds" },
-      { name: "Deluxe Single Room", price: 85, description: "1 twin bed" },
-    ], // Add room types if available
-    hasFreeAirportPickup: true,
-    hasInclusiveBreakfast: true,
-    hasKitchen: false,
-    specialNotes: "Free airport pickup and inclusive breakfast included."
-  },
-  "Lexor Apartments": {
-    roomTypes: [
-      { name: "1 bedroom", price: 120, description: "1 queen bed" },
-      { name: "2 bedrooms", price: 136, description: "2 queen beds" },
-    ], // Add room types if available
-    hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: false,
-    hasKitchen: false,
-    specialNotes: "No inclusive breakfast included."
-  },
-  "Oasis Park": {
-    roomTypes: [
-      { name: "2 Bedrooms Comfort Shared Dormitory Garden View", price: 61.20, description: "2 queen bed" },
-      { name: "Deluxe Studio 1 King Bed", price: 103.50, description: "1 King Bed" },
-      { name: "Signature Apartment 2 Bedrooms Garden View", price: 145.01, description: "1 king bed and 1 queen bed" },
-      { name: "Comfort Apartment", price: 155.93, description: "1 king bed and 1 queen bed" },
-      { name: "Superior Apartment", price: 222.76, description: "1 full bed and 2 king bed" },
-      { name: "Elite Apartment", price: 356.41, description: "1 king bed and 3 queen bed" }
-    ], // Add room types if available
-    hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: true,
-    hasKitchen: false,
-    specialNotes: "No inclusive breakfast included."
-  },
-  "Madras Hotel and Apartments": {
-    roomTypes: [
-      { name: "Standard Double Room", price: 70, description: "1 full bed" },
-      { name: "One-Bedroom Apartment", price: 110, description: "1 full bed , 1 sofa bed" },
-      { name: "Two-Bedroom Apartment", price: 210, description: "1 full bed , 1 sofa bed" },
-    ], // Add room types if available
-    hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: true,
-    hasKitchen: false,
-    specialNotes: "Contact for specific room details and amenities."
-  }
-};
-
-// Helper function to get hotel details
-const getHotelDetails = (hotelName: string) => {
-  return hotelDetailsMap[hotelName] || {
-    roomTypes: [],
-    hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: false,
-    hasKitchen: false,
-    specialNotes: "Contact for specific room details and amenities."
+  // Hotel-specific details mapping
+  const hotelDetailsMap: Record<string, {
+    roomTypes: Array<{ name: string; price: number; description?: string }>;
+    hasFreeAirportPickup: boolean;
+    hasInclusiveBreakfast: boolean;
+    hasKitchen: boolean;
+    specialNotes: string;
+  }> = {
+    "Great Seasons Hotel": {
+      roomTypes: [
+        { name: "Standard", price: 70, description: "Comfortable standard room" },
+        { name: "Junior Suite", price: 100, description: "Spacious junior suite" },
+        { name: "Superior", price: 150, description: "Premium superior room" }
+      ],
+      hasFreeAirportPickup: true,
+      hasInclusiveBreakfast: true,
+      hasKitchen: false,
+      specialNotes: "All room types include breakfast and free airport pickup. No kitchen facilities available."
+    },
+    "Highlands Suites Hotel": {
+      roomTypes: [
+        { name: "2 Bedroom", price: 180, description: "Two bedroom suite" },
+        { name: "Single", price: 100, description: "Single room" }
+      ],
+      hasFreeAirportPickup: false, // $25 charge
+      hasInclusiveBreakfast: true,
+      hasKitchen: false,
+      specialNotes: "Includes breakfast. Airport pickup available for $25."
+    },
+    "Vista Luxury Apartment": {
+      roomTypes: [
+        { name: "2 Bedroom", price: 100, description: "5 units available with kitchen" },
+        { name: "1 Bedroom", price: 80, description: "1 unit with kitchen" }
+      ],
+      hasFreeAirportPickup: false,
+      hasInclusiveBreakfast: false,
+      hasKitchen: true,
+      specialNotes: "Kitchen available in all units. No free airport pickup or inclusive breakfast."
+    },
+    "Grazia Apartment Hotel": {
+      roomTypes: [
+        { name: "2 Bedroom with Kitchen", price: 300, description: "With kitchen facilities" },
+        { name: "1 Bedroom with Kitchen", price: 200, description: "With kitchen facilities" },
+        { name: "1 Bedroom without Kitchen", price: 110, description: "Standard room" },
+        { name: "Standard", price: 119, description: "Basic standard room" },
+        { name: "Twin", price: 160, description: "Twin beds" },
+        { name: "Superior Double", price: 150, description: "Premium double room" }
+      ],
+      hasFreeAirportPickup: false,
+      hasInclusiveBreakfast: false,
+      hasKitchen: true, // Some units have kitchen
+      specialNotes: "Kitchen available in some units. Check room types for details."
+    },
+    "Ndaru Luxury Suites by Le Muguet": {
+      roomTypes: [
+        { name: "Executive suite", price: 185, description: "1 queen bed" },
+        { name: "Deluxe Apartment", price: 230, description: "1 queen bed , 1 king bed" },
+        { name: "Deluxe Double Room", price: 104, description: "1 queen bed" },
+        { name: "Deluxe Twin Room", price: 114, description: "2 twins beds" },
+        { name: "Deluxe Single Room", price: 85, description: "1 twin bed" },
+      ], // Add room types if available
+      hasFreeAirportPickup: true,
+      hasInclusiveBreakfast: true,
+      hasKitchen: false,
+      specialNotes: "Free airport pickup and inclusive breakfast included."
+    },
+    "Lexor Apartments": {
+      roomTypes: [
+        { name: "1 bedroom", price: 120, description: "1 queen bed" },
+        { name: "2 bedrooms", price: 136, description: "2 queen beds" },
+      ], // Add room types if available
+      hasFreeAirportPickup: false,
+      hasInclusiveBreakfast: false,
+      hasKitchen: false,
+      specialNotes: "No inclusive breakfast included."
+    },
+    "Oasis Park": {
+      roomTypes: [
+        { name: "2 Bedrooms Comfort Shared Dormitory Garden View", price: 61.20, description: "2 queen bed" },
+        { name: "Deluxe Studio 1 King Bed", price: 103.50, description: "1 King Bed" },
+        { name: "Signature Apartment 2 Bedrooms Garden View", price: 145.01, description: "1 king bed and 1 queen bed" },
+        { name: "Comfort Apartment", price: 155.93, description: "1 king bed and 1 queen bed" },
+        { name: "Superior Apartment", price: 222.76, description: "1 full bed and 2 king bed" },
+        { name: "Elite Apartment", price: 356.41, description: "1 king bed and 3 queen bed" }
+      ], // Add room types if available
+      hasFreeAirportPickup: false,
+      hasInclusiveBreakfast: true,
+      hasKitchen: false,
+      specialNotes: "No inclusive breakfast included."
+    },
+    "Madras Hotel and Apartments": {
+      roomTypes: [
+        { name: "Standard Double Room", price: 70, description: "1 full bed" },
+        { name: "One-Bedroom Apartment", price: 110, description: "1 full bed , 1 sofa bed" },
+        { name: "Two-Bedroom Apartment", price: 210, description: "1 full bed , 1 sofa bed" },
+      ], // Add room types if available
+      hasFreeAirportPickup: false,
+      hasInclusiveBreakfast: true,
+      hasKitchen: false,
+      specialNotes: "Contact for specific room details and amenities."
+    }
   };
-};
 
-// In your AccommodationDetails component
-const handleFlutterwavePayment = async () => {
-  console.log('🔵 handleFlutterwavePayment called!');
-  
-  if (!accommodation) {
-    console.log('❌ No accommodation data');
-    return;
-  }
+  // Helper function to get hotel details
+  const getHotelDetails = (hotelName: string) => {
+    return hotelDetailsMap[hotelName] || {
+      roomTypes: [],
+      hasFreeAirportPickup: false,
+      hasInclusiveBreakfast: false,
+      hasKitchen: false,
+      specialNotes: "Contact for specific room details and amenities."
+    };
+  };
 
-  try {
-    setIsPaying(true);
+  // In your AccommodationDetails component
+  const handleFlutterwavePayment = async () => {
+    console.log('🔵 handleFlutterwavePayment called!');
 
-    // Auth and validation
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
-      return;
-    }
-    
-    if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
-      toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
+    if (!accommodation) {
+      console.log('❌ No accommodation data');
       return;
     }
 
-    // Validate payment method specific fields
-    if (paymentProvider === 'MOMO') {
-      if (!momo.phone || !momo.name) {
-        toast({ title: 'Missing Information', description: 'Please provide your MoMo phone number and account name', variant: 'destructive' });
+    try {
+      setIsPaying(true);
+
+      // Auth and validation
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
         return;
       }
-    }
 
-    // 1) Create booking (TEMPORARY status)
-    const bookingRes = await bookingsApi.create({
-      serviceType: 'ACCOMMODATION',
-      serviceId: accommodation.id,
-      startDate: booking.checkIn,
-      endDate: booking.checkOut,
-      numberOfPeople: parseInt(booking.guests || '1', 10),
-      specialRequests: booking.specialRequests || ''
-    });
-    
-    if (!bookingRes.success) {
-      console.error('Booking creation failed:', bookingRes);
-      throw new Error('Failed to create booking');
-    }
-    
-    const newBooking = bookingRes.data.booking;
-    console.log('✅ Booking created successfully:', newBooking);
-
-    // 2) Compute amount
-    const checkInDate = new Date(booking.checkIn);
-    const checkOutDate = new Date(booking.checkOut);
-    const msPerDay = 1000 * 60 * 60 * 24;
-    const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
-    const nights = Math.max(1, rawNights);
-    const guests = parseInt(booking.guests) || 1;
-    const amount = nights * guests * (accommodation.pricePerNight || 0);
-
-    console.log('💰 Payment details:', { nights, guests, amount, currency: accommodation.currency });
-
-    // 3) Prepare customer (Flutterwave Hosted Pay)
-    const customer = {
-      email: user?.email || 'guest@example.com',
-      name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
-      phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
-    };
-
-    console.log('👤 Customer details:', customer);
-
-    // 4) Initialize Flutterwave session via backend
-    console.log('🚀 Initializing Flutterwave payment...');
-    console.log('📤 Sending payload to backend:', {
-      bookingId: newBooking.id,
-      amount,
-      currency: accommodation.currency || 'RWF',
-      customer,
-    });
-    
-    const initRes = await flutterwaveApi.init({
-      bookingId: newBooking.id,
-      amount,
-      currency: accommodation.currency || 'RWF',
-      customer,
-    });
-
-    console.log('📡 Flutterwave init response:', initRes);
-
-    if (initRes.success && initRes.link) {
-      const paymentLink = initRes.link;
-      const transactionRef = initRes.tx_ref;
-      
-      setFlutterwaveLink(paymentLink);
-      if (transactionRef) setTxRef(transactionRef);
-      
-      console.log('✅ Flutterwave payment initialized successfully');
-      console.log('🔗 Payment link:', paymentLink);
-      console.log('📝 Transaction ref:', transactionRef);
-      
-      // Open Flutterwave payment page in a new tab/window
-      const paymentWindow = window.open(paymentLink, '_blank', 'noopener,noreferrer');
-      
-      if (paymentWindow) {
-        toast({
-          title: 'Payment Page Opened',
-          description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
-          variant: 'default',
-        });
-        
-        // Focus the payment window
-        paymentWindow.focus();
-      } else {
-        // Fallback if popup is blocked
-        toast({
-          title: 'Popup Blocked',
-          description: 'Please allow popups and try again, or copy this link: ' + paymentLink,
-          variant: 'destructive',
-        });
+      if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
+        toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
+        return;
       }
-    } else {
-      console.error('❌ Flutterwave init failed:', initRes);
-      throw new Error(initRes.message || 'Failed to initiate payment - no payment link received');
+
+      // Validate payment method specific fields
+      if (paymentProvider === 'MOMO') {
+        if (!momo.phone || !momo.name) {
+          toast({ title: 'Missing Information', description: 'Please provide your MoMo phone number and account name', variant: 'destructive' });
+          return;
+        }
+      }
+
+      // 1) Create booking (TEMPORARY status)
+      const bookingRes = await bookingsApi.create({
+        serviceType: 'ACCOMMODATION',
+        serviceId: accommodation.id,
+        startDate: booking.checkIn,
+        endDate: booking.checkOut,
+        numberOfPeople: parseInt(booking.guests || '1', 10),
+        specialRequests: booking.specialRequests || ''
+      });
+
+      if (!bookingRes.success) {
+        console.error('Booking creation failed:', bookingRes);
+        throw new Error('Failed to create booking');
+      }
+
+      const newBooking = bookingRes.data.booking;
+      console.log('✅ Booking created successfully:', newBooking);
+
+      // 2) Compute amount
+      const checkInDate = new Date(booking.checkIn);
+      const checkOutDate = new Date(booking.checkOut);
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
+      const nights = Math.max(1, rawNights);
+      const guests = parseInt(booking.guests) || 1;
+      const baseAmount = nights * guests * (accommodation.pricePerNight || 0);
+      const stripeFee = baseAmount * 0.05; // 5% Stripe fee
+      const amount = baseAmount + stripeFee;
+
+      console.log('💰 Payment details:', { nights, guests, amount, currency: accommodation.currency });
+
+      // 3) Prepare customer (Flutterwave Hosted Pay)
+      const customer = {
+        email: user?.email || 'guest@example.com',
+        name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
+        phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
+      };
+
+      console.log('👤 Customer details:', customer);
+
+      // 4) Initialize Flutterwave session via backend
+      console.log('🚀 Initializing Flutterwave payment...');
+      console.log('📤 Sending payload to backend:', {
+        bookingId: newBooking.id,
+        amount,
+        currency: accommodation.currency || 'RWF',
+        customer,
+      });
+
+      const initRes = await flutterwaveApi.init({
+        bookingId: newBooking.id,
+        amount,
+        currency: accommodation.currency || 'RWF',
+        customer,
+      });
+
+      console.log('📡 Flutterwave init response:', initRes);
+
+      if (initRes.success && initRes.link) {
+        const paymentLink = initRes.link;
+        const transactionRef = initRes.tx_ref;
+
+        setFlutterwaveLink(paymentLink);
+        if (transactionRef) setTxRef(transactionRef);
+
+        console.log('✅ Flutterwave payment initialized successfully');
+        console.log('🔗 Payment link:', paymentLink);
+        console.log('📝 Transaction ref:', transactionRef);
+
+        // Open Flutterwave payment page in a new tab/window
+        const paymentWindow = window.open(paymentLink, '_blank', 'noopener,noreferrer');
+
+        if (paymentWindow) {
+          toast({
+            title: 'Payment Page Opened',
+            description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
+            variant: 'default',
+          });
+
+          // Focus the payment window
+          paymentWindow.focus();
+        } else {
+          // Fallback if popup is blocked
+          toast({
+            title: 'Popup Blocked',
+            description: 'Please allow popups and try again, or copy this link: ' + paymentLink,
+            variant: 'destructive',
+          });
+        }
+      } else {
+        console.error('❌ Flutterwave init failed:', initRes);
+        throw new Error(initRes.message || 'Failed to initiate payment - no payment link received');
+      }
+    } catch (error: unknown) {
+      console.error('Payment initialization error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
+      toast({ title: 'Payment Error', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setIsPaying(false);
     }
-  } catch (error: unknown) {
-    console.error('Payment initialization error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
-    toast({ title: 'Payment Error', description: errorMessage, variant: 'destructive' });
-  } finally {
-    setIsPaying(false);
-  }
-};
+  };
 
   const verifyPayment = async () => {
     if (!txRef) {
@@ -471,7 +473,7 @@ const handleFlutterwavePayment = async () => {
     try {
       setIsPaying(true);
       console.log('[Payment] Verifying payment for tx_ref:', txRef);
-      
+
       const data = await flutterwaveApi.verifyJson(txRef);
 
       if (data.success && data.paid) {
@@ -522,8 +524,8 @@ const handleFlutterwavePayment = async () => {
       setSubmitting(true);
       // At this point, the backend verification endpoint already confirmed the booking and updated payment/booking status.
       setSuccess(true);
-      toast({ 
-        title: 'Booking Confirmed!', 
+      toast({
+        title: 'Booking Confirmed!',
         description: 'Your payment was verified and booking is confirmed. Check your email for details.',
         variant: 'default'
       });
@@ -546,7 +548,7 @@ const handleFlutterwavePayment = async () => {
         </div>
       </div>
     );
-    
+
     return inDashboard ? content : (
       <div className="min-h-screen bg-background">
         <Header />
@@ -555,7 +557,7 @@ const handleFlutterwavePayment = async () => {
       </div>
     );
   }
-  
+
   if (error || !accommodation) {
     const content = (
       <div className="container mx-auto px-4 py-8">
@@ -572,7 +574,7 @@ const handleFlutterwavePayment = async () => {
         </div>
       </div>
     );
-    
+
     return inDashboard ? content : (
       <div className="min-h-screen bg-background">
         <Header />
@@ -623,9 +625,9 @@ const handleFlutterwavePayment = async () => {
           )}
 
           {/* Distance Information Component */}
-          <DistanceInfo 
-            accommodationName={accommodation.name} 
-            location={accommodation.location.city} 
+          <DistanceInfo
+            accommodationName={accommodation.name}
+            location={accommodation.location.city}
           />
 
           <Card className="mb-6">
@@ -772,105 +774,105 @@ const handleFlutterwavePayment = async () => {
           </Card>
 
           {/* Additional Hotel Information Card */}
-{/* Additional Hotel Information Card */}
-<Card className="mt-6">
-  <CardHeader>
-    <CardTitle>Hotel Details</CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    {/* Get hotel-specific details */}
-    {(() => {
-      const hotelDetails = getHotelDetails(accommodation.name);
-      
-      return (
-        <>
-          {/* Room Types */}
-          {hotelDetails.roomTypes.length > 0 && (
-            <div>
-              <h4 className="font-semibold mb-2">Room Types & Prices</h4>
-              <div className="space-y-2">
-                {hotelDetails.roomTypes.map((room, idx) => (
-                  <div key={idx} className="flex justify-between items-center text-sm">
+          {/* Additional Hotel Information Card */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Hotel Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Get hotel-specific details */}
+              {(() => {
+                const hotelDetails = getHotelDetails(accommodation.name);
+
+                return (
+                  <>
+                    {/* Room Types */}
+                    {hotelDetails.roomTypes.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold mb-2">Room Types & Prices</h4>
+                        <div className="space-y-2">
+                          {hotelDetails.roomTypes.map((room, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-sm">
+                              <div>
+                                <span className="font-medium">{room.name}</span>
+                                {room.description && (
+                                  <p className="text-xs text-muted-foreground">{room.description}</p>
+                                )}
+                              </div>
+                              <span className="font-semibold">
+                                {accommodation.currency} {room.price.toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Amenities & Services */}
                     <div>
-                      <span className="font-medium">{room.name}</span>
-                      {room.description && (
-                        <p className="text-xs text-muted-foreground">{room.description}</p>
-                      )}
+                      <h4 className="font-semibold mb-2">Services Included</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          {hotelDetails.hasFreeAirportPickup ? (
+                            <>
+                              <Check className="h-4 w-4 text-green-600" />
+                              <span className="text-green-600">Free Airport Pickup</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-muted-foreground">✗</span>
+                              <span className="text-muted-foreground">No Free Airport Pickup</span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {hotelDetails.hasInclusiveBreakfast ? (
+                            <>
+                              <Check className="h-4 w-4 text-green-600" />
+                              <span className="text-green-600">Inclusive Breakfast</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-muted-foreground">✗</span>
+                              <span className="text-muted-foreground">No Inclusive Breakfast</span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {hotelDetails.hasKitchen ? (
+                            <>
+                              <Check className="h-4 w-4 text-green-600" />
+                              <span className="text-green-600">Kitchen Available</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-muted-foreground">✗</span>
+                              <span className="text-muted-foreground">No Kitchen</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <span className="font-semibold">
-                      {accommodation.currency} {room.price.toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* Amenities & Services */}
-          <div>
-            <h4 className="font-semibold mb-2">Services Included</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                {hotelDetails.hasFreeAirportPickup ? (
-                  <>
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600">Free Airport Pickup</span>
+                    {/* Special Notes */}
+                    {hotelDetails.specialNotes && (
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <p className="text-sm text-blue-700">
+                          <strong>Special Note:</strong> {hotelDetails.specialNotes}
+                        </p>
+                      </div>
+                    )}
                   </>
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">✗</span>
-                    <span className="text-muted-foreground">No Free Airport Pickup</span>
-                  </>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {hotelDetails.hasInclusiveBreakfast ? (
-                  <>
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600">Inclusive Breakfast</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">✗</span>
-                    <span className="text-muted-foreground">No Inclusive Breakfast</span>
-                  </>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                {hotelDetails.hasKitchen ? (
-                  <>
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="text-green-600">Kitchen Available</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-muted-foreground">✗</span>
-                    <span className="text-muted-foreground">No Kitchen</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Special Notes */}
-          {hotelDetails.specialNotes && (
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-blue-700">
-                <strong>Special Note:</strong> {hotelDetails.specialNotes}
-              </p>
-            </div>
-          )}
-        </>
-      );
-    })()}
-  </CardContent>
-</Card>
+                );
+              })()}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-<Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/30">
           {!success ? (
             <form onSubmit={handleBookingAndPayment} className="space-y-4">
@@ -986,7 +988,9 @@ const handleFlutterwavePayment = async () => {
                 const hasDates = booking.checkIn && booking.checkOut;
                 const nights = hasDates ? Math.max(1, Math.ceil((new Date(booking.checkOut).getTime() - new Date(booking.checkIn).getTime()) / (1000 * 60 * 60 * 24))) : 0;
                 const guests = parseInt(booking.guests || "1", 10) || 1;
-                const total = nights * guests * (accommodation.pricePerNight || 0);
+                const baseTotal = nights * guests * (accommodation.pricePerNight || 0);
+                const stripeFee = baseTotal * 0.05;
+                const total = baseTotal + stripeFee;
                 return (
                   <div className="bg-secondary/50 p-4 rounded-lg">
                     <div className="flex justify-between items-center">
@@ -995,11 +999,26 @@ const handleFlutterwavePayment = async () => {
                           {nights > 0 ? `Total for ${guests} guest${guests > 1 ? "s" : ""} over ${nights} night${nights > 1 ? "s" : ""}` : `Total for ${guests} guest${guests > 1 ? "s" : ""}`}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Rate: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night{nights > 0 ? ". Includes all taxes and fees." : ". Select dates to see total."}
+                          Rate: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night
+                          {nights > 0 && (
+                            <>
+                              <br />
+                              Base: {accommodation.currency} {baseTotal.toLocaleString()}
+                              <br />
+                              Stripe fee (5%): {accommodation.currency} {stripeFee.toLocaleString()}
+                            </>
+                          )}
                         </p>
                       </div>
                       <div className="text-right">
-                        {nights > 0 ? <p className="text-xl font-bold">{accommodation.currency} {total.toLocaleString()}</p> : <p className="text-sm text-muted-foreground">Select dates</p>}
+                        {nights > 0 ? (
+                          <>
+                            <p className="text-xl font-bold">{accommodation.currency} {total.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">Includes 5% fee</p>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Select dates</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1010,13 +1029,13 @@ const handleFlutterwavePayment = async () => {
               <div className="space-y-4">
                 {/* Step 1: Initiate Payment */}
                 <div className="space-y-2">
-                  <Button 
-                    type="button" 
-                    className="w-full" 
+                  <Button
+                    type="button"
+                    className="w-full"
                     onClick={() => {
                       console.log('🔴 Button clicked!');
                       handleFlutterwavePayment();
-                    }} 
+                    }}
                     disabled={isPaying}
                   >
                     {isPaying ? (
@@ -1028,20 +1047,20 @@ const handleFlutterwavePayment = async () => {
                       `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Flutterwave)`
                     )}
                   </Button>
-                  
+
                   {txRef && (
                     <div className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
                       Transaction Reference: {txRef}
                     </div>
                   )}
-                  
+
                   {flutterwaveLink && (
                     <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded border border-blue-200">
                       <p className="font-medium text-blue-700 mb-1">Payment Link Generated</p>
                       <p className="text-blue-600 mb-2">If the payment page didn't open automatically, click the link below:</p>
-                      <a 
-                        href={flutterwaveLink} 
-                        target="_blank" 
+                      <a
+                        href={flutterwaveLink}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 underline hover:text-blue-800 break-all"
                       >
@@ -1054,11 +1073,11 @@ const handleFlutterwavePayment = async () => {
                 {/* Step 2: Verify Payment */}
                 {txRef && (
                   <div className="space-y-2">
-                    <Button 
-                      type="button" 
-                      variant="secondary" 
+                    <Button
+                      type="button"
+                      variant="secondary"
                       className="w-full"
-                      onClick={verifyPayment} 
+                      onClick={verifyPayment}
                       disabled={isPaying || paymentVerified}
                     >
                       {isPaying ? (
@@ -1075,7 +1094,7 @@ const handleFlutterwavePayment = async () => {
                         'Verify Payment'
                       )}
                     </Button>
-                    
+
                     {!paymentVerified && txRef && (
                       <div className="text-xs text-muted-foreground bg-yellow-50 p-2 rounded border border-yellow-200">
                         <p className="font-medium text-yellow-700 mb-1">Payment Verification Required</p>
@@ -1113,9 +1132,9 @@ const handleFlutterwavePayment = async () => {
               </div>
 
               {/* Confirm after verification */}
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 disabled={!paymentVerified || submitting}
                 variant={paymentVerified ? "default" : "secondary"}
               >
