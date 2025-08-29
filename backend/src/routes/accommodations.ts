@@ -474,11 +474,23 @@ router.put('/:id', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodati
     const { id } = req.params;
     const updateData: any = { ...req.body };
 
-    // Convert numeric fields
-    if (updateData.pricePerNight) updateData.pricePerNight = parseFloat(updateData.pricePerNight);
-    if (updateData.maxGuests) updateData.maxGuests = parseInt(updateData.maxGuests);
-    if (updateData.bedrooms) updateData.bedrooms = parseInt(updateData.bedrooms);
-    if (updateData.bathrooms) updateData.bathrooms = parseInt(updateData.bathrooms);
+    // Convert numeric fields (allow 0 values)
+    if (Object.prototype.hasOwnProperty.call(updateData, 'pricePerNight') && updateData.pricePerNight !== undefined) {
+      updateData.pricePerNight = parseFloat(updateData.pricePerNight);
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'maxGuests') && updateData.maxGuests !== undefined) {
+      updateData.maxGuests = parseInt(updateData.maxGuests);
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'bedrooms') && updateData.bedrooms !== undefined) {
+      updateData.bedrooms = parseInt(updateData.bedrooms);
+      // Toggle availability based on bedrooms count when provided
+      if (!isNaN(updateData.bedrooms)) {
+        updateData.isAvailable = updateData.bedrooms > 0;
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'bathrooms') && updateData.bathrooms !== undefined) {
+      updateData.bathrooms = parseInt(updateData.bathrooms);
+    }
 
     // Verify location exists if updating
     if (updateData.locationId) {

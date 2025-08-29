@@ -5,6 +5,47 @@ import { sendEmail, emailTemplates } from "../utils/email";
 
 const router = Router();
 
+// Adjust accommodation inventory atomically after a booking is confirmed
+async function adjustAccommodationAvailability(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { serviceType: true, accommodationId: true }
+  });
+
+  if (!booking || booking.serviceType !== "ACCOMMODATION" || !booking.accommodationId) return;
+
+  const accommodationId: string = booking.accommodationId as string;
+
+  await prisma.$transaction(async (tx) => {
+    const accommodation = await tx.accommodation.findUnique({
+      where: { id: accommodationId },
+      select: { bedrooms: true, isAvailable: true }
+    });
+
+    if (!accommodation) return;
+
+    const currentBedrooms = accommodation.bedrooms || 0;
+    if (currentBedrooms <= 0) {
+      // Already at zero; ensure isAvailable is false
+      await tx.accommodation.update({
+        where: { id: accommodationId },
+        data: { isAvailable: false }
+      });
+      return;
+    }
+
+    const newBedrooms = currentBedrooms - 1;
+
+    await tx.accommodation.update({
+      where: { id: accommodationId },
+      data: {
+        bedrooms: newBedrooms,
+        isAvailable: newBedrooms > 0
+      }
+    });
+  });
+}
+
 
 /**
  * @swagger
@@ -303,6 +344,9 @@ router.get("/verify", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
 
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       // Send confirmation email ONLY after successful payment verification
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
@@ -370,6 +414,9 @@ router.get("/verify-json", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
       
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
         const { subject, html } = emailTemplates.bookingConfirmation(
@@ -440,6 +487,9 @@ router.get("/flutterwave/verify", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
       
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       // Send confirmation email ONLY after successful payment verification
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
@@ -508,6 +558,9 @@ router.get("/flutterwave/verify-json", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
       
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       // Send confirmation email ONLY after successful payment verification
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';

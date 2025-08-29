@@ -20,6 +20,7 @@ interface Accommodation {
   description: string;
   type: string;
   category: string;
+  isAvailable?: boolean;
   pricePerNight: number;
   currency: string;
   maxGuests: number;
@@ -491,6 +492,9 @@ const handleFlutterwavePayment = async () => {
             </div>
             <Badge variant="secondary">{accommodation.type}</Badge>
             <Badge variant="outline">{accommodation.category}</Badge>
+            <Badge variant={accommodation.isAvailable === false ? 'destructive' : 'secondary'}>
+              {accommodation.isAvailable === false ? 'Full' : 'Available'}
+            </Badge>
           </div>
 
           {accommodation.images && accommodation.images.length > 0 && (
