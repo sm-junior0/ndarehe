@@ -304,6 +304,9 @@ const AccommodationsManagement: React.FC = () => {
         images: formData.images.split(',').map(s => s.trim()).filter(Boolean),
         isAvailable: isAvailable,
       };
+
+      console.log('Sending payload:', payload); 
+
       const res = await adminApi.updateAccommodation(token, editTarget.id, payload);
       if (res.data?.success !== false) {
         toast({ title: 'Updated', description: 'Accommodation updated successfully' });
