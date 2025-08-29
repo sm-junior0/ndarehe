@@ -269,30 +269,50 @@ const hotelDetailsMap: Record<string, {
     specialNotes: "Kitchen available in some units. Check room types for details."
   },
   "Ndaru Luxury Suites by Le Muguet": {
-    roomTypes: [], // Add room types if available
+    roomTypes: [
+      { name: "Executive suite", price: 185, description: "1 queen bed" },
+      { name: "Deluxe Apartment", price: 230, description: "1 queen bed , 1 king bed" },
+      { name: "Deluxe Double Room", price: 104, description: "1 queen bed" },
+      { name: "Deluxe Twin Room", price: 114, description: "2 twins beds" },
+      { name: "Deluxe Single Room", price: 85, description: "1 twin bed" },
+    ], // Add room types if available
     hasFreeAirportPickup: true,
     hasInclusiveBreakfast: true,
     hasKitchen: false,
     specialNotes: "Free airport pickup and inclusive breakfast included."
   },
   "Lexor Apartments": {
-    roomTypes: [], // Add room types if available
+    roomTypes: [
+      { name: "1 bedroom", price: 120, description: "1 queen bed" },
+      { name: "2 bedrooms", price: 136, description: "2 queen beds" },
+    ], // Add room types if available
     hasFreeAirportPickup: false,
     hasInclusiveBreakfast: false,
     hasKitchen: false,
     specialNotes: "No inclusive breakfast included."
   },
   "Oasis Park": {
-    roomTypes: [], // Add room types if available
+    roomTypes: [
+      { name: "2 Bedrooms Comfort Shared Dormitory Garden View", price: 61.20, description: "2 queen bed" },
+      { name: "Deluxe Studio 1 King Bed", price: 103.50, description: "1 King Bed" },
+      { name: "Signature Apartment 2 Bedrooms Garden View", price: 145.01, description: "1 king bed and 1 queen bed" },
+      { name: "Comfort Apartment", price: 155.93, description: "1 king bed and 1 queen bed" },
+      { name: "Superior Apartment", price: 222.76, description: "1 full bed and 2 king bed" },
+      { name: "Elite Apartment", price: 356.41, description: "1 king bed and 3 queen bed" }
+    ], // Add room types if available
     hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: false,
+    hasInclusiveBreakfast: true,
     hasKitchen: false,
     specialNotes: "No inclusive breakfast included."
   },
   "Madras Hotel and Apartments": {
-    roomTypes: [], // Add room types if available
+    roomTypes: [
+      { name: "Standard Double Room", price: 70, description: "1 full bed" },
+      { name: "One-Bedroom Apartment", price: 110, description: "1 full bed , 1 sofa bed" },
+      { name: "Two-Bedroom Apartment", price: 210, description: "1 full bed , 1 sofa bed" },
+    ], // Add room types if available
     hasFreeAirportPickup: false,
-    hasInclusiveBreakfast: false,
+    hasInclusiveBreakfast: true,
     hasKitchen: false,
     specialNotes: "Contact for specific room details and amenities."
   }
