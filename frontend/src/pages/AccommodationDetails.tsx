@@ -102,6 +102,7 @@ const DistanceInfo = ({ accommodationName, location }: DistanceInfoProps) => {
     return distances[accommodationName] || { km: 12, time: "20-25 min" };
   };
 
+
   const distanceToAirport = getDistances();
   const distanceToCityCenter = Math.round(distanceToAirport.km * 0.7);
   const distanceToConvention = Math.round(distanceToAirport.km * 0.8);
@@ -213,6 +214,100 @@ const AccommodationDetails = () => {
     fetchAccommodation();
   }, [id]);
 
+
+// Hotel-specific details mapping
+const hotelDetailsMap: Record<string, {
+  roomTypes: Array<{ name: string; price: number; description?: string }>;
+  hasFreeAirportPickup: boolean;
+  hasInclusiveBreakfast: boolean;
+  hasKitchen: boolean;
+  specialNotes: string;
+}> = {
+  "Great Seasons Hotel": {
+    roomTypes: [
+      { name: "Standard", price: 70, description: "Comfortable standard room" },
+      { name: "Junior Suite", price: 100, description: "Spacious junior suite" },
+      { name: "Superior", price: 150, description: "Premium superior room" }
+    ],
+    hasFreeAirportPickup: true,
+    hasInclusiveBreakfast: true,
+    hasKitchen: false,
+    specialNotes: "All room types include breakfast and free airport pickup. No kitchen facilities available."
+  },
+  "Highlands Suites Hotel": {
+    roomTypes: [
+      { name: "2 Bedroom", price: 180, description: "Two bedroom suite" },
+      { name: "Single", price: 100, description: "Single room" }
+    ],
+    hasFreeAirportPickup: false, // $25 charge
+    hasInclusiveBreakfast: true,
+    hasKitchen: false,
+    specialNotes: "Includes breakfast. Airport pickup available for $25."
+  },
+  "Vista Luxury Apartment": {
+    roomTypes: [
+      { name: "2 Bedroom", price: 100, description: "5 units available with kitchen" },
+      { name: "1 Bedroom", price: 80, description: "1 unit with kitchen" }
+    ],
+    hasFreeAirportPickup: false,
+    hasInclusiveBreakfast: false,
+    hasKitchen: true,
+    specialNotes: "Kitchen available in all units. No free airport pickup or inclusive breakfast."
+  },
+  "Grazia Apartment Hotel": {
+    roomTypes: [
+      { name: "2 Bedroom with Kitchen", price: 300, description: "With kitchen facilities" },
+      { name: "1 Bedroom with Kitchen", price: 200, description: "With kitchen facilities" },
+      { name: "1 Bedroom without Kitchen", price: 110, description: "Standard room" },
+      { name: "Standard", price: 119, description: "Basic standard room" },
+      { name: "Twin", price: 160, description: "Twin beds" },
+      { name: "Superior Double", price: 150, description: "Premium double room" }
+    ],
+    hasFreeAirportPickup: false,
+    hasInclusiveBreakfast: false,
+    hasKitchen: true, // Some units have kitchen
+    specialNotes: "Kitchen available in some units. Check room types for details."
+  },
+  "Ndaru Luxury Suites by Le Muguet": {
+    roomTypes: [], // Add room types if available
+    hasFreeAirportPickup: true,
+    hasInclusiveBreakfast: true,
+    hasKitchen: false,
+    specialNotes: "Free airport pickup and inclusive breakfast included."
+  },
+  "Lexor Apartments": {
+    roomTypes: [], // Add room types if available
+    hasFreeAirportPickup: false,
+    hasInclusiveBreakfast: false,
+    hasKitchen: false,
+    specialNotes: "No inclusive breakfast included."
+  },
+  "Oasis Park": {
+    roomTypes: [], // Add room types if available
+    hasFreeAirportPickup: false,
+    hasInclusiveBreakfast: false,
+    hasKitchen: false,
+    specialNotes: "No inclusive breakfast included."
+  },
+  "Madras Hotel and Apartments": {
+    roomTypes: [], // Add room types if available
+    hasFreeAirportPickup: false,
+    hasInclusiveBreakfast: false,
+    hasKitchen: false,
+    specialNotes: "Contact for specific room details and amenities."
+  }
+};
+
+// Helper function to get hotel details
+const getHotelDetails = (hotelName: string) => {
+  return hotelDetailsMap[hotelName] || {
+    roomTypes: [],
+    hasFreeAirportPickup: false,
+    hasInclusiveBreakfast: false,
+    hasKitchen: false,
+    specialNotes: "Contact for specific room details and amenities."
+  };
+};
 
 // In your AccommodationDetails component
 const handleFlutterwavePayment = async () => {
@@ -653,130 +748,99 @@ const handleFlutterwavePayment = async () => {
           </Card>
 
           {/* Additional Hotel Information Card */}
+{/* Additional Hotel Information Card */}
 <Card className="mt-6">
   <CardHeader>
     <CardTitle>Hotel Details</CardTitle>
   </CardHeader>
   <CardContent className="space-y-4">
-    {/* Room Types */}
-    {accommodation.roomTypes && accommodation.roomTypes.length > 0 && (
-      <div>
-        <h4 className="font-semibold mb-2">Room Types & Prices</h4>
-        <div className="space-y-2">
-          {accommodation.roomTypes.map((room, idx) => (
-            <div key={room.id || idx} className="flex justify-between items-center text-sm">
-              <span>{room.name}</span>
-              <span className="font-semibold">
-                {room.currency || accommodation.currency} {room.pricePerNight.toLocaleString()}
-              </span>
+    {/* Get hotel-specific details */}
+    {(() => {
+      const hotelDetails = getHotelDetails(accommodation.name);
+      
+      return (
+        <>
+          {/* Room Types */}
+          {hotelDetails.roomTypes.length > 0 && (
+            <div>
+              <h4 className="font-semibold mb-2">Room Types & Prices</h4>
+              <div className="space-y-2">
+                {hotelDetails.roomTypes.map((room, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-sm">
+                    <div>
+                      <span className="font-medium">{room.name}</span>
+                      {room.description && (
+                        <p className="text-xs text-muted-foreground">{room.description}</p>
+                      )}
+                    </div>
+                    <span className="font-semibold">
+                      {accommodation.currency} {room.price.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-    )}
+          )}
 
-    {/* Amenities & Services */}
-    <div>
-      <h4 className="font-semibold mb-2">Services Included</h4>
-      <div className="space-y-1 text-sm">
-        {/* Check for free airport pickup */}
-        {accommodation.amenities?.some(amenity => 
-          amenity.toLowerCase().includes('airport') || 
-          amenity.toLowerCase().includes('pickup')
-        ) ? (
-          <div className="flex items-center gap-2 text-green-600">
-            <Check className="h-4 w-4" />
-            <span>Free Airport Pickup</span>
+          {/* Amenities & Services */}
+          <div>
+            <h4 className="font-semibold mb-2">Services Included</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                {hotelDetails.hasFreeAirportPickup ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600">Free Airport Pickup</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">✗</span>
+                    <span className="text-muted-foreground">No Free Airport Pickup</span>
+                  </>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {hotelDetails.hasInclusiveBreakfast ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600">Inclusive Breakfast</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">✗</span>
+                    <span className="text-muted-foreground">No Inclusive Breakfast</span>
+                  </>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {hotelDetails.hasKitchen ? (
+                  <>
+                    <Check className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600">Kitchen Available</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">✗</span>
+                    <span className="text-muted-foreground">No Kitchen</span>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span>✗</span>
-            <span>No Free Airport Pickup</span>
-          </div>
-        )}
 
-        {/* Check for inclusive breakfast */}
-        {accommodation.amenities?.some(amenity => 
-          amenity.toLowerCase().includes('breakfast') || 
-          amenity.toLowerCase().includes('meal')
-        ) ? (
-          <div className="flex items-center gap-2 text-green-600">
-            <Check className="h-4 w-4" />
-            <span>Inclusive Breakfast</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span>✗</span>
-            <span>No Inclusive Breakfast</span>
-          </div>
-        )}
-
-        {/* Check for kitchen */}
-        {accommodation.amenities?.some(amenity => 
-          amenity.toLowerCase().includes('kitchen') || 
-          amenity.toLowerCase().includes('cooking')
-        ) ? (
-          <div className="flex items-center gap-2 text-green-600">
-            <Check className="h-4 w-4" />
-            <span>Kitchen Available</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <span>✗</span>
-            <span>No Kitchen</span>
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* Special Notes based on hotel name */}
-    {accommodation.name.includes("Great Seasons") && (
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Special Note:</strong> All room types include breakfast and free airport pickup. No kitchen facilities available.
-        </p>
-      </div>
-    )}
-
-    {accommodation.name.includes("Highlands Suites") && (
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Special Note:</strong> Includes breakfast. Airport pickup available for $25.
-        </p>
-      </div>
-    )}
-
-    {accommodation.name.includes("Vista Luxury") && (
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Special Note:</strong> Kitchen available in all units. No free airport pickup or inclusive breakfast.
-        </p>
-      </div>
-    )}
-
-    {accommodation.name.includes("Grazia") && (
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Special Note:</strong> Kitchen available in some units. Check room types for details.
-        </p>
-      </div>
-    )}
-
-    {accommodation.name.includes("Ndaru") && (
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Special Note:</strong> Free airport pickup and inclusive breakfast included.
-        </p>
-      </div>
-    )}
-
-    {(accommodation.name.includes("Oasis") || accommodation.name.includes("Lexor")) && (
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Special Note:</strong> No inclusive breakfast included.
-        </p>
-      </div>
-    )}
+          {/* Special Notes */}
+          {hotelDetails.specialNotes && (
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Special Note:</strong> {hotelDetails.specialNotes}
+              </p>
+            </div>
+          )}
+        </>
+      );
+    })()}
   </CardContent>
 </Card>
         </div>
