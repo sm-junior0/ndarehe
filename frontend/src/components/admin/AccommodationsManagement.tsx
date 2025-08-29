@@ -317,6 +317,9 @@ const AccommodationsManagement: React.FC = () => {
         toast({ title: 'Update failed', description: res.data?.error || 'Failed to update', variant: 'destructive' });
       }
     } catch (e: any) {
+      console.error('Full error response:', e.response); // Add this
+    console.error('Error data:', e.response?.data); // Add this
+    console.error('Error message:', e.response?.data?.message); 
       toast({ title: 'Update failed', description: e?.response?.data?.error || e.message || 'Failed to update', variant: 'destructive' });
     } finally {
       setUpdating(false);
