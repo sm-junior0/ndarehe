@@ -5,12 +5,228 @@ import { sendEmail, emailTemplates } from "../utils/email";
 
 const router = Router();
 
+// Adjust accommodation inventory atomically after a booking is confirmed
+async function adjustAccommodationAvailability(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: { serviceType: true, accommodationId: true }
+  });
+
+  if (!booking || booking.serviceType !== "ACCOMMODATION" || !booking.accommodationId) return;
+
+  const accommodationId: string = booking.accommodationId as string;
+
+  await prisma.$transaction(async (tx) => {
+    const accommodation = await tx.accommodation.findUnique({
+      where: { id: accommodationId },
+      select: { bedrooms: true, isAvailable: true }
+    });
+
+    if (!accommodation) return;
+
+    const currentBedrooms = accommodation.bedrooms || 0;
+    if (currentBedrooms <= 0) {
+      // Already at zero; ensure isAvailable is false
+      await tx.accommodation.update({
+        where: { id: accommodationId },
+        data: { isAvailable: false }
+      });
+      return;
+    }
+
+    const newBedrooms = currentBedrooms - 1;
+
+    await tx.accommodation.update({
+      where: { id: accommodationId },
+      data: {
+        bedrooms: newBedrooms,
+        isAvailable: newBedrooms > 0
+      }
+    });
+  });
+}
+
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     CreatePaymentRequest:
+ *       type: object
+ *       required:
+ *         - bookingId
+ *         - amount
+ *         - method
+ *       properties:
+ *         bookingId:
+ *           type: string
+ *           description: ID of the booking to pay for
+ *         amount:
+ *           type: number
+ *           description: Payment amount
+ *         method:
+ *           type: string
+ *           enum: [CARD, MOBILE_MONEY, BANK_TRANSFER, CASH, PAYPAL]
+ *           description: Payment method
+ *         currency:
+ *           type: string
+ *           default: RWF
+ *           description: Payment currency
+ */
+
+/**
+ * @swagger
+ * /payments:
+ *   post:
+ *     summary: Create a new payment
+ *     description: Process a payment for a booking
+ *     tags: [Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreatePaymentRequest'
+ *     responses:
+ *       201:
+ *         description: Payment created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Payment processed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     payment:
+ *                       $ref: '#/components/schemas/Payment'
+ *       400:
+ *         description: Bad request - validation error or booking not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - invalid or missing token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
+/**
+ * @swagger
+ * /payments:
+ *   get:
+ *     summary: Get user payments
+ *     description: Retrieve all payments for the current user
+ *     tags: [Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED, CANCELLED]
+ *         description: Filter by payment status
+ *       - in: query
+ *         name: method
+ *         schema:
+ *           type: string
+ *           enum: [CARD, MOBILE_MONEY, BANK_TRANSFER, CASH, PAYPAL]
+ *         description: Filter by payment method
+ *     responses:
+ *       200:
+ *         description: User payments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     payments:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Payment'
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         currentPage:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         totalItems:
+ *                           type: integer
+ *                         itemsPerPage:
+ *                           type: integer
+ */
+
+// @desc    Initialize Flutterwave payment
+// @route   POST /api/payments/flutterwave
+// @access  Public (but should be protected in production)
 router.post("/flutterwave", async (req, res) => {
   const { bookingId, amount, currency, customer } = req.body;
 
-  if (!bookingId || !amount || !currency || !customer) {
-    return res.status(400).json({ success: false, message: "Missing parameters" });
-  }
+    // Validate required parameters
+    if (!bookingId || !amount || !currency || !customer) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Missing required parameters: bookingId, amount, currency, or customer" 
+      });
+    }
+
+    
+
+    // Check if booking exists
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { user: true }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Booking not found" 
+      });
+    }
+
+    // Check if booking is already paid
+    const existingPayment = await prisma.payment.findFirst({
+      where: { bookingId, status: "COMPLETED" }
+    });
+
+    if (existingPayment) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Booking already paid" 
+      });
+    }
 
   const tx_ref = `ACCOM-${bookingId}-${Date.now()}`;
 
@@ -110,6 +326,9 @@ router.get("/verify", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
 
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       // Send confirmation email ONLY after successful payment verification
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
@@ -178,6 +397,9 @@ router.get("/verify-json", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
       
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
         const { subject, html } = emailTemplates.bookingConfirmation(
@@ -248,6 +470,9 @@ router.get("/flutterwave/verify", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
       
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       // Send confirmation email ONLY after successful payment verification
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';
@@ -319,6 +544,9 @@ router.get("/flutterwave/verify-json", async (req, res) => {
         include: { user: true, accommodation: true, transportation: true, tour: true }
       });
       
+      // Decrement rooms and toggle availability for accommodations
+      await adjustAccommodationAvailability(bookingId);
+
       // Send confirmation email ONLY after successful payment verification
       if (updated.user) {
         const serviceName = updated.accommodation?.name || updated.transportation?.name || updated.tour?.name || 'Service';

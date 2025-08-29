@@ -18,6 +18,7 @@ interface Accommodation {
   description: string;
   type: string;
   category: string;
+  isAvailable?: boolean;
   location: {
     id: string;
     name: string;
@@ -177,9 +178,14 @@ const Accommodations = () => {
             <CardHeader className="pb-3">
               <div className="flex justify-between items-start mb-2">
                 <CardTitle className="text-lg">{accommodation.name}</CardTitle>
-                <Badge variant={accommodation.category === 'LUXURY' ? 'default' : 'secondary'}>
-                  {accommodation.category}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={accommodation.isAvailable === false ? 'destructive' : 'secondary'}>
+                    {accommodation.isAvailable === false ? 'Full' : 'Available'}
+                  </Badge>
+                  <Badge variant={accommodation.category === 'LUXURY' ? 'default' : 'secondary'}>
+                    {accommodation.category}
+                  </Badge>
+                </div>
               </div>
               <CardDescription className="line-clamp-2">
                 {accommodation.description}

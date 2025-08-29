@@ -374,41 +374,15 @@ router.get('/:id', optionalAuth, async (req: Request, res: Response, next: NextF
 // @desc    Create accommodation (Admin/Provider only)
 // @route   POST /api/accommodations
 // @access  Private
-router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodationSchemas.create), async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const {
-      name,
-      description,
-      type,
-      category,
-      locationId,
-      address,
-      phone,
-      email,
-      website,
-      pricePerNight,
-      currency,
-      maxGuests,
-      bedrooms,
-      bathrooms,
-      amenities,
-      images
-    } = req.body;
-
-    // Verify location exists
-    const location = await prisma.location.findUnique({
-      where: { id: locationId }
-    });
-
-    if (!location) {
-      return res.status(400).json({
-        success: false,
-        error: 'Location not found'
-      });
-    }
-
-    const accommodation = await prisma.accommodation.create({
-      data: {
+router.post(
+  '/',
+  protect,
+  authorize('ADMIN', 'PROVIDER'),
+  validate(accommodationSchemas.create),
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    console.log('Incoming accommodation data:', req.body); // 👈 Add this line
+    try {
+      const {
         name,
         description,
         type,
@@ -418,67 +392,113 @@ router.post('/', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodation
         phone,
         email,
         website,
-        pricePerNight: parseFloat(pricePerNight),
+        pricePerNight,
         currency,
-        maxGuests: parseInt(maxGuests),
-        bedrooms: parseInt(bedrooms),
-        bathrooms: parseInt(bathrooms),
-        amenities: amenities || [],
-        images: images || [],
-        // Partner fields if provided
-        isPartner: req.body.isPartner ?? false,
-        partnerName: req.body.partnerName ?? null,
-        partnerContact: req.body.partnerContact ?? null,
-        partnerNotes: req.body.partnerNotes ?? null
-      },
-      include: {
-        location: {
-          select: {
-            id: true,
-            name: true,
-            city: true,
-            district: true,
-            province: true
+        maxGuests,
+        bedrooms,
+        bathrooms,
+        amenities,
+        images
+      } = req.body;
+
+      // Verify location exists
+      const location = await prisma.location.findUnique({
+        where: { id: locationId }
+      });
+
+      if (!location) {
+        return res.status(400).json({
+          success: false,
+          error: 'Location not found'
+        });
+      }
+
+      const accommodation = await prisma.accommodation.create({
+        data: {
+          name,
+          description,
+          type,
+          category,
+          locationId,
+          address,
+          phone,
+          email,
+          website,
+          pricePerNight: parseFloat(pricePerNight),
+          currency,
+          maxGuests: parseInt(maxGuests),
+          bedrooms: parseInt(bedrooms),
+          bathrooms: parseInt(bathrooms),
+          amenities: amenities || [],
+          images: images || [],
+          // Partner fields if provided
+          isPartner: req.body.isPartner ?? false,
+          partnerName: req.body.partnerName ?? null,
+          partnerContact: req.body.partnerContact ?? null,
+          partnerNotes: req.body.partnerNotes ?? null
+        },
+        include: {
+          location: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              district: true,
+              province: true
+            }
           }
         }
-      }
-    });
-
-    // Log activity
-    try {
-      const actorId = (req as any).user?.id as string | undefined;
-      await logActivity({
-        type: ActivityType.ACCOMMODATION_CREATED,
-        actorUserId: actorId || null,
-        targetType: 'ACCOMMODATION',
-        targetId: accommodation.id,
-        message: `Accommodation added: ${accommodation.name}`,
       });
-    } catch {}
 
-    res.status(201).json({
-      success: true,
-      message: 'Accommodation created successfully',
-      data: { accommodation }
-    });
-  } catch (error) {
-    next(error);
+      // Log activity
+      try {
+        const actorId = (req as any).user?.id as string | undefined;
+        await logActivity({
+          type: ActivityType.ACCOMMODATION_CREATED,
+          actorUserId: actorId || null,
+          targetType: 'ACCOMMODATION',
+          targetId: accommodation.id,
+          message: `Accommodation added: ${accommodation.name}`,
+        });
+      } catch {}
+
+      res.status(201).json({
+        success: true,
+        message: 'Accommodation created successfully',
+        data: { accommodation }
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 // @desc    Update accommodation (Admin/Provider only)
 // @route   PUT /api/accommodations/:id
 // @access  Private
 router.put('/:id', protect, authorize('ADMIN', 'PROVIDER'), validate(accommodationSchemas.update), async (req: AuthRequest, res: Response, next: NextFunction) => {
+  console.log('Update accommodation data:', req.body); // 👈 Add this line
   try {
     const { id } = req.params;
     const updateData: any = { ...req.body };
 
-    // Convert numeric fields
-    if (updateData.pricePerNight) updateData.pricePerNight = parseFloat(updateData.pricePerNight);
-    if (updateData.maxGuests) updateData.maxGuests = parseInt(updateData.maxGuests);
-    if (updateData.bedrooms) updateData.bedrooms = parseInt(updateData.bedrooms);
-    if (updateData.bathrooms) updateData.bathrooms = parseInt(updateData.bathrooms);
+    // Convert numeric fields (allow 0 values)
+    if (Object.prototype.hasOwnProperty.call(updateData, 'pricePerNight') && updateData.pricePerNight !== undefined) {
+      updateData.pricePerNight = parseFloat(updateData.pricePerNight);
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'maxGuests') && updateData.maxGuests !== undefined) {
+      updateData.maxGuests = parseInt(updateData.maxGuests);
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'bedrooms') && updateData.bedrooms !== undefined) {
+      updateData.bedrooms = parseInt(updateData.bedrooms);
+      // Toggle availability based on bedrooms count when provided
+      if (!isNaN(updateData.bedrooms)) {
+        updateData.isAvailable = updateData.bedrooms > 0;
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'bathrooms') && updateData.bathrooms !== undefined) {
+      updateData.bathrooms = parseInt(updateData.bathrooms);
+    }
 
     // Verify location exists if updating
     if (updateData.locationId) {
@@ -694,4 +714,4 @@ router.get('/categories', async (req: Request, res: Response, next: NextFunction
   }
 });
 
-export default router; 
+export default router;
