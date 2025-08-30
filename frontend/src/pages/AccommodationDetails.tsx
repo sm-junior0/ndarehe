@@ -938,7 +938,7 @@ const AccommodationDetails = () => {
                   Unit price: {accommodation.currency} {accommodation.pricePerNight.toLocaleString()} per person per night
                 </p>
                 <p className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                  💳 You'll be redirected to Flutterwave's secure payment page to complete your transaction.
+                  💳 You'll be redirected to Stripe's secure payment page to complete your transaction.
                 </p>
               </div>
 
