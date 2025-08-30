@@ -152,8 +152,6 @@ app.use('/api/tours', tourRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/transactions', paymentRoutes);
-app.use('/apis/payments', paymentRoutes);
-app.use('/apis/transactions', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/trip-plans', tripPlanRoutes);
 app.use('/api/notifications', notificationRoutes);

@@ -332,7 +332,7 @@ const AccommodationDetails = () => {
 
   // In your AccommodationDetails component
   const handleStripePayment = async () => {
-    console.log('🔵 handleFlutterwavePayment called!');
+    console.log('🔵 handleStripePayment called!');
     console.log('🔵 accommodation:', accommodation);
     console.log('🔵 booking:', booking);
     console.log('🔵 paymentProvider:', paymentProvider);
