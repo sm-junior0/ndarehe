@@ -1,13 +1,16 @@
 import Stripe from "stripe";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_API_KEY;
+
+// Don't throw during import - just log a warning
 if (!STRIPE_SECRET_KEY) {
-  throw new Error("Missing STRIPE_SECRET_KEY in environment");
+  console.warn('⚠️ Stripe secret key missing - Stripe payments will be disabled');
 }
 
-export const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: "2023-10-16",
-});
+// Only create stripe instance if key exists
+export const stripe = STRIPE_SECRET_KEY 
+  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" })
+  : null;
 
 export interface CreateCheckoutParams {
   txRef: string;
@@ -20,6 +23,11 @@ export interface CreateCheckoutParams {
 }
 
 export async function createCheckoutSession(params: CreateCheckoutParams) {
+  // Check if Stripe is configured
+  if (!stripe) {
+    throw new Error("Stripe is not configured - missing secret key");
+  }
+  
   const unitAmount = Math.round(Number(params.amount) * 100);
   
   // Ensure currency is lowercase and valid for Stripe
@@ -65,7 +73,9 @@ export async function createCheckoutSession(params: CreateCheckoutParams) {
 }
 
 export async function retrieveSession(sessionId: string) {
+  if (!stripe) {
+    throw new Error("Stripe is not configured - missing secret key");
+  }
+  
   return stripe.checkout.sessions.retrieve(sessionId);
 }
-
-

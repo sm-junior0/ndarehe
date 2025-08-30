@@ -93,7 +93,7 @@ router.post("/stripe", async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking or user not found" });
     }
 
-    const baseUrl = process.env.BACKEND_URL || "http://localhost:5000";
+    const baseUrl = process.env.BACKEND_URL || "https://ndarehe.onrender.com";
     const successUrl = `${baseUrl}/api/payments/stripe/verify`;
     const cancelUrl = `${baseUrl}/api/payments/stripe/cancel`;
 
@@ -171,7 +171,7 @@ router.get("/stripe/cancel", async (req, res) => {
     
     const redirectUrl = process.env.NODE_ENV === "production"
       ? `${process.env.BASE_URL}/booking/failed`
-      : `http://localhost:5173/booking/failed`;
+      : `http://ndarehe.vercel.app/booking/failed`;
     
     return res.redirect(redirectUrl);
   } catch (error) {
