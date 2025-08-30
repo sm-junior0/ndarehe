@@ -62,7 +62,7 @@ const TransportationManagement: React.FC = () => {
     capacity: '',
     pricePerTrip: '',
     pricePerHour: '',
-    currency: 'RWF',
+    currency: 'USD',
     amenities: '',
     images: ''
   });
@@ -229,7 +229,7 @@ const TransportationManagement: React.FC = () => {
       capacity: '',
       pricePerTrip: '',
       pricePerHour: '',
-      currency: 'RWF',
+      currency: 'USD',
       amenities: '',
       images: ''
     });
@@ -634,7 +634,7 @@ const TransportationManagement: React.FC = () => {
                 id="currency"
                 value={formData.currency}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                placeholder="RWF"
+                placeholder="USD"
               />
             </div>
 

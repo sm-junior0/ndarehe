@@ -271,7 +271,7 @@ router.post('/', protect, requireVerification, validate(bookingSchemas.create), 
         endDate: endDate ? new Date(endDate) : null,
         numberOfPeople: parseInt(numberOfPeople),
         totalAmount,
-        currency: service.currency || 'RWF',
+        currency: service.currency || 'USD',
         specialRequests: specialRequests || null
       },
       include: {

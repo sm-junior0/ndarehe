@@ -396,7 +396,7 @@ const AccommodationDetails = () => {
       const initRes = await stripeApi.init({
         bookingId: newBooking.id,
         amount,
-        currency: accommodation.currency || 'RWF',
+        currency: accommodation.currency || 'USD',
         customer,
       });
 

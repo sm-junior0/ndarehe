@@ -59,7 +59,7 @@ const options: swaggerJsdoc.Options = {
             type: { type: 'string', enum: ['HOTEL', 'GUESTHOUSE', 'APARTMENT', 'VILLA', 'HOSTEL', 'CAMPING', 'HOMESTAY'] },
             category: { type: 'string', enum: ['BUDGET', 'STANDARD', 'PREMIUM', 'LUXURY'] },
             pricePerNight: { type: 'number' },
-            currency: { type: 'string', default: 'RWF' },
+            currency: { type: 'string', default: 'USD' },
             maxGuests: { type: 'integer' },
             bedrooms: { type: 'integer' },
             bathrooms: { type: 'integer' },
@@ -79,7 +79,7 @@ const options: swaggerJsdoc.Options = {
             category: { type: 'string', enum: ['BUDGET', 'STANDARD', 'PREMIUM', 'LUXURY'] },
             duration: { type: 'integer', description: 'Duration in hours' },
             pricePerPerson: { type: 'number' },
-            currency: { type: 'string', default: 'RWF' },
+            currency: { type: 'string', default: 'USD' },
             maxParticipants: { type: 'integer' },
             minParticipants: { type: 'integer' },
             meetingPoint: { type: 'string' },
@@ -100,7 +100,7 @@ const options: swaggerJsdoc.Options = {
             capacity: { type: 'integer' },
             pricePerTrip: { type: 'number' },
             pricePerHour: { type: 'number' },
-            currency: { type: 'string', default: 'RWF' }
+            currency: { type: 'string', default: 'USD' }
           }
         },
         Booking: {
@@ -112,7 +112,7 @@ const options: swaggerJsdoc.Options = {
             endDate: { type: 'string', format: 'date-time' },
             numberOfPeople: { type: 'integer' },
             totalAmount: { type: 'number' },
-            currency: { type: 'string', default: 'RWF' },
+            currency: { type: 'string', default: 'USD' },
             status: { type: 'string', enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'REFUNDED'] },
             specialRequests: { type: 'string' }
           }
@@ -122,7 +122,7 @@ const options: swaggerJsdoc.Options = {
           properties: {
             id: { type: 'string' },
             amount: { type: 'number' },
-            currency: { type: 'string', default: 'RWF' },
+            currency: { type: 'string', default: 'USD' },
             method: { type: 'string', enum: ['CARD', 'MOBILE_MONEY', 'BANK_TRANSFER', 'CASH', 'PAYPAL'] },
             status: { type: 'string', enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED', 'CANCELLED'] },
             transactionId: { type: 'string' }

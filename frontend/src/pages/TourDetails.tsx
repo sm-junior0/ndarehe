@@ -144,7 +144,7 @@ const TourDetails = () => {
           bookingId: (response as any).data.booking.id,
           amount,
           method: paymentProvider === 'MOMO' ? 'MOBILE_MONEY' : 'CARD',
-          currency: tour.currency || 'RWF',
+          currency: tour.currency || 'USD',
         });
 
         if ((payRes as any).success) {
@@ -689,7 +689,7 @@ const TourDetails = () => {
         </CardHeader>
         <CardContent>
           <div className="text-center mb-4">
-            <div className="text-3xl font-bold">RWF {tour.pricePerPerson.toLocaleString()}</div>
+            <div className="text-3xl font-bold">USD {tour.pricePerPerson.toLocaleString()}</div>
             <div className="text-muted-foreground">per person</div>
           </div>
         </CardContent>

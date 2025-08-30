@@ -191,7 +191,7 @@ const Transportation = () => {
         const initRes = await stripeApi.init({
           bookingId: (response as any).data.booking.id,
           amount,
-          currency: selectedService.currency || 'RWF',
+          currency: selectedService.currency || 'USD',
           customer,
         });
 

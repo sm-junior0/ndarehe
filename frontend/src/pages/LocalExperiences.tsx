@@ -274,7 +274,7 @@ const LocalExperiences = () => {
                   
                   <CardFooter className="flex items-center justify-between p-0">
                     <div>
-                                              <span className="text-xl font-bold">RWF {experience.price.toLocaleString()}</span>
+                                              <span className="text-xl font-bold">USD {experience.price.toLocaleString()}</span>
                       <span className="text-muted-foreground text-sm"> /person</span>
                     </div>
                     <Button onClick={() => openModal(experience)}>Book Now</Button>
@@ -296,7 +296,7 @@ const LocalExperiences = () => {
                 <DialogDescription>
                   <div className="flex items-center mt-1">
                     <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                            {selectedExperience.rating} • {selectedExperience.duration} • RWF {selectedExperience.price.toLocaleString()}/person
+                                            {selectedExperience.rating} • {selectedExperience.duration} • USD {selectedExperience.price.toLocaleString()}/person
                   </div>
                 </DialogDescription>
               </DialogHeader>
@@ -345,7 +345,7 @@ const LocalExperiences = () => {
                     <p className="text-sm text-muted-foreground">Includes all fees and taxes</p>
                   </div>
                   <p className="text-xl font-bold">
-                                            RWF {(selectedExperience.price * bookingDetails.participants).toLocaleString()}
+                                            USD {(selectedExperience.price * bookingDetails.participants).toLocaleString()}
                   </p>
                 </div>
               </div>

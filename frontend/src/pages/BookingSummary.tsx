@@ -150,7 +150,7 @@ const BookingSummary = () => {
           bookingIds: bookingIds,
           amount: total,
           method: paymentMethod.toUpperCase(),
-          currency: "RWF"
+          currency: "USD"
         }),
       });
 
@@ -235,7 +235,7 @@ const BookingSummary = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Total Paid:</span>
-                    <span className="font-bold">RWF {total.toLocaleString()}</span>
+                    <span className="font-bold">USD {total.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="font-medium">Payment Method:</span>
@@ -298,7 +298,7 @@ const BookingSummary = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">RWF {item.price.toLocaleString()}</p>
+                          <p className="font-semibold">USD {item.price.toLocaleString()}</p>
                           <Badge variant="secondary">{item.serviceType}</Badge>
                         </div>
                       </div>
@@ -319,16 +319,16 @@ const BookingSummary = () => {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>RWF {subtotal.toLocaleString()}</span>
+                    <span>USD {subtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Service Fee (5%)</span>
-                    <span>RWF {serviceFee.toLocaleString()}</span>
+                    <span>USD {serviceFee.toLocaleString()}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>RWF {total.toLocaleString()}</span>
+                    <span>USD {total.toLocaleString()}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -374,7 +374,7 @@ const BookingSummary = () => {
                     Processing Payment...
                   </>
                 ) : (
-                  `Pay RWF ${total.toLocaleString()}`
+                  `Pay USD ${total.toLocaleString()}`
                 )}
               </Button>
 

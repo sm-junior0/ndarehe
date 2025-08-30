@@ -148,7 +148,7 @@ const AnalyticsPanel: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">RWF {analyticsData.revenue.total.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">USD {analyticsData.revenue.total.toLocaleString()}</p>
               </div>
               <DollarSign className="h-8 w-8 text-green-600" />
             </div>
@@ -172,7 +172,7 @@ const AnalyticsPanel: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Avg. Booking Value</p>
-                <p className="text-2xl font-bold text-gray-900">RWF {analyticsData.metrics.averageBookingValue.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">USD {analyticsData.metrics.averageBookingValue.toLocaleString()}</p>
               </div>
               <BarChart3 className="h-8 w-8 text-orange-600" />
             </div>
@@ -238,7 +238,7 @@ const AnalyticsPanel: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Trend (RWF)</CardTitle>
+            <CardTitle>Revenue Trend (USD)</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -294,7 +294,7 @@ const AnalyticsPanel: React.FC = () => {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Average Booking Value</span>
-                <span className="font-semibold">RWF {analyticsData.metrics.averageBookingValue.toLocaleString()}</span>
+                <span className="font-semibold">USD {analyticsData.metrics.averageBookingValue.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Top Performing Service</span>

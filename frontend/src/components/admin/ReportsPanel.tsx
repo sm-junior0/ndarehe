@@ -225,9 +225,9 @@ const ReportsPanel: React.FC = () => {
     switch (reportType) {
       case 'revenue':
         return [
-          { title: 'Total Revenue', value: `RWF ${summary.totalRevenue?.toLocaleString() || 0}`, icon: TrendingUp, color: 'text-green-600' },
+          { title: 'Total Revenue', value: `USD ${summary.totalRevenue?.toLocaleString() || 0}`, icon: TrendingUp, color: 'text-green-600' },
           { title: 'Total Bookings', value: summary.totalBookings || 0, icon: Calendar, color: 'text-blue-600' },
-          { title: 'Average Revenue', value: `RWF ${Math.round(summary.averageRevenue || 0).toLocaleString()}`, icon: BarChart3, color: 'text-purple-600' }
+          { title: 'Average Revenue', value: `USD ${Math.round(summary.averageRevenue || 0).toLocaleString()}`, icon: BarChart3, color: 'text-purple-600' }
         ];
       case 'bookings':
         return [
@@ -512,7 +512,7 @@ const ReportsPanel: React.FC = () => {
                       <td className="p-2">{row.date}</td>
                       {reportType === 'revenue' && (
                         <>
-                          <td className="text-right p-2">RWF {(row.revenue || 0).toLocaleString()}</td>
+                          <td className="text-right p-2">USD {(row.revenue || 0).toLocaleString()}</td>
                           <td className="text-right p-2">{row.bookings || 0}</td>
                         </>
                       )}
@@ -522,7 +522,7 @@ const ReportsPanel: React.FC = () => {
                           <td className="text-right p-2">{row.confirmedBookings || 0}</td>
                           <td className="text-right p-2">{row.cancelledBookings || 0}</td>
                           <td className="text-right p-2">{row.pendingBookings || 0}</td>
-                          <td className="text-right p-2">RWF {(row.revenue || 0).toLocaleString()}</td>
+                          <td className="text-right p-2">USD {(row.revenue || 0).toLocaleString()}</td>
                         </>
                       )}
                       {reportType === 'activity' && (

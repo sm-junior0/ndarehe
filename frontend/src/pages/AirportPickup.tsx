@@ -155,7 +155,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
         const initRes = await stripeApi.init({
           bookingId: (response as any).data.booking.id,
           amount,
-          currency: selectedCar.currency || 'RWF',
+          currency: selectedCar.currency || 'USD',
           customer,
         });
 

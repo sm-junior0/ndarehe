@@ -72,7 +72,7 @@ const AccommodationsManagement: React.FC = () => {
     locationId: '',
     address: '',
     pricePerNight: '',
-    currency: 'RWF',
+    currency: 'USD',
     maxGuests: '',
     bedrooms: '',
     bathrooms: '',
@@ -251,7 +251,7 @@ const AccommodationsManagement: React.FC = () => {
       locationId: '',
       address: '',
       pricePerNight: '',
-      currency: 'RWF',
+      currency: 'USD',
       maxGuests: '',
       bedrooms: '',
       bathrooms: '',
@@ -270,7 +270,7 @@ const AccommodationsManagement: React.FC = () => {
       locationId: acc.location?.id || '',
       address: acc.location?.name || '',
       pricePerNight: String(acc.pricePerNight ?? ''),
-      currency: acc.currency || 'RWF',
+      currency: acc.currency || 'USD',
       maxGuests: String(acc.maxGuests ?? ''),
       bedrooms: String(acc.bedrooms ?? ''),
       bathrooms: String(acc.bathrooms ?? ''),
@@ -763,7 +763,7 @@ const AccommodationsManagement: React.FC = () => {
                   id="currency"
                   value={formData.currency}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                  placeholder="RWF"
+                  placeholder="USD"
                 />
               </div>
             </div>

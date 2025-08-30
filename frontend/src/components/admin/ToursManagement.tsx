@@ -66,7 +66,7 @@ const ToursManagement: React.FC = () => {
     maxParticipants: '',
     minParticipants: '',
     pricePerPerson: '',
-    currency: 'RWF',
+    currency: 'USD',
     itinerary: '',
     includes: '',
     excludes: '',
@@ -248,7 +248,7 @@ const ToursManagement: React.FC = () => {
       maxParticipants: '',
       minParticipants: '',
       pricePerPerson: '',
-      currency: 'RWF',
+      currency: 'USD',
       itinerary: '',
       includes: '',
       excludes: '',
@@ -674,7 +674,7 @@ const ToursManagement: React.FC = () => {
                   id="currency"
                   value={formData.currency}
                   onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                  placeholder="RWF"
+                  placeholder="USD"
                 />
               </div>
             </div>

@@ -93,7 +93,7 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
     locationId: '',
     address: '',
     pricePerNight: '',
-    currency: 'RWF',
+    currency: 'USD',
     maxGuests: '',
     bedrooms: '',
     bathrooms: '',
@@ -109,7 +109,7 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
     capacity: '',
     pricePerTrip: '',
     pricePerHour: '',
-    currency: 'RWF',
+    currency: 'USD',
     amenities: '',
     images: ''
   });
@@ -123,7 +123,7 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
     maxParticipants: '',
     minParticipants: '1',
     pricePerPerson: '',
-    currency: 'RWF',
+    currency: 'USD',
     itinerary: '',
     includes: '',
     excludes: '',
@@ -161,9 +161,9 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
 
   const resetForm = () => {
     setCommon({ name: '', description: '' });
-    setAcc({ type: 'HOTEL', category: 'STANDARD', locationId: '', address: '', pricePerNight: '', currency: 'RWF', maxGuests: '', bedrooms: '', bathrooms: '', amenities: '', images: '' });
-    setTrans({ type: 'AIRPORT_PICKUP', vehicleType: 'STANDARD', locationId: '', capacity: '', pricePerTrip: '', pricePerHour: '', currency: 'RWF', amenities: '', images: '' });
-    setTour({ type: 'CITY_TOUR', category: 'STANDARD', locationId: '', duration: '', maxParticipants: '', minParticipants: '1', pricePerPerson: '', currency: 'RWF', itinerary: '', includes: '', excludes: '', meetingPoint: '', startTime: '', endTime: '', images: '' });
+    setAcc({ type: 'HOTEL', category: 'STANDARD', locationId: '', address: '', pricePerNight: '', currency: 'USD', maxGuests: '', bedrooms: '', bathrooms: '', amenities: '', images: '' });
+    setTrans({ type: 'AIRPORT_PICKUP', vehicleType: 'STANDARD', locationId: '', capacity: '', pricePerTrip: '', pricePerHour: '', currency: 'USD', amenities: '', images: '' });
+    setTour({ type: 'CITY_TOUR', category: 'STANDARD', locationId: '', duration: '', maxParticipants: '', minParticipants: '1', pricePerPerson: '', currency: 'USD', itinerary: '', includes: '', excludes: '', meetingPoint: '', startTime: '', endTime: '', images: '' });
     setUser({ firstName: '', lastName: '', email: '', role: 'USER' });
   };
 
@@ -188,7 +188,7 @@ export const AddNewModal: React.FC<AddNewModalProps> = ({ open, onOpenChange }) 
       switch (createType) {
         case 'USER':
           payload = { ...user };
-          apiCall = adminApi.createUser(token, payload);
+          apiCall = adminApi.createUser(payload);
           break;
         case 'ACCOMMODATION':
           payload = {

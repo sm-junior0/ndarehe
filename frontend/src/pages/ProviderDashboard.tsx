@@ -211,7 +211,7 @@ const ProviderDashboard: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                        <p className="text-3xl font-bold text-gray-900">RWF {stats.totalRevenue.toLocaleString()}</p>
+                        <p className="text-3xl font-bold text-gray-900">USD {stats.totalRevenue.toLocaleString()}</p>
                         <p className="text-sm text-gray-500">This month</p>
                       </div>
                       <div className="p-3 bg-purple-100 rounded-full">
@@ -255,7 +255,7 @@ const ProviderDashboard: React.FC = () => {
                           <p className="text-sm text-gray-500">{booking.dates}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gray-900">RWF {booking.amount.toLocaleString()}</p>
+                          <p className="font-bold text-gray-900">USD {booking.amount.toLocaleString()}</p>
                           <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
                             {booking.status}
                           </Badge>
