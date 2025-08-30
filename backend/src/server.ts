@@ -28,6 +28,9 @@ import tripPlanRoutes from './routes/tripPlans';
 import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
 
+import testRoutes from './routes/test-routes';
+
+
 
 
 
@@ -37,9 +40,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const prisma = new PrismaClient();
 
-console.log('🔄 Registering payment routes...');
-app.use('/api/payments', paymentRoutes);
-console.log('✅ Payment routes registered');
+app.use('/api/test', testRoutes);
+
 
 // Trust proxy for rate limiting behind load balancers
 app.set('trust proxy', 1);

@@ -6,14 +6,6 @@ import { sendEmail, emailTemplates } from "../utils/email";
 
 const router = Router();
 
-router.get('/test', (req, res) => {
-  res.json({ message: 'Payment routes are working!' });
-});
-
-router.get('/stripe/test', (req, res) => {
-  res.json({ message: 'Stripe test route is working!' });
-});
-
 router.post("/flutterwave", async (req, res) => {
   const { bookingId, amount, currency, customer } = req.body;
 
