@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
-import { transportationApi, bookingsApi, paymentsApi, flutterwaveApi } from "@/lib/api";
+import { transportationApi, bookingsApi, paymentsApi, stripeApi } from "@/lib/api";
 
 interface Transportation {
   id: string;
@@ -54,14 +54,7 @@ const Transportation = () => {
   const [success, setSuccess] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   // UI selection: VISA | MASTERCARD | MOMO. Maps to backend methods CARD or MOBILE_MONEY
-  const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
-  const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
-  const [card, setCard] = useState({ holder: "", number: "", expiry: "", cvc: "" });
-  const [momo, setMomo] = useState({
-    phone: "",
-    name: "",
-    reference: "",
-  });
+  // Payment method is now handled by Stripe checkout
   const [selectedService, setSelectedService] = useState<Transportation | null>(null);
   const [booking, setBooking] = useState({
     startDate: "",
@@ -76,7 +69,7 @@ const Transportation = () => {
   const { user } = useAuth();
 
   const [paymentVerified, setPaymentVerified] = useState(false);
-  const [flutterwaveLink, setFlutterwaveLink] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string | null>(null);
 
   // Fetch transportation from API
@@ -139,7 +132,7 @@ const Transportation = () => {
     setSuccess(false);
     setPaymentVerified(false);
     setTxRef(null);
-    setFlutterwaveLink(null);
+    setPaymentLink(null);
     setModalOpen(true);
   };
 
@@ -164,16 +157,8 @@ const Transportation = () => {
     }
 
     try {
-      // Validate payment selection
-      if (paymentProvider === 'MOMO') {
-        if (!momo.phone || !momo.name) {
-          throw new Error('Please provide your MoMo number and name.');
-        }
-      } else {
-        if (!card.holder || !card.number || !card.expiry || !card.cvc) {
-          throw new Error('Please fill in all card fields.');
-        }
-      }
+      // For Stripe checkout, we don't need to validate card fields here
+      // User will enter card details on Stripe's secure checkout page
 
       const response = await bookingsApi.create({
         serviceType: "TRANSPORTATION",
@@ -200,11 +185,10 @@ const Transportation = () => {
         const customer = {
           email: user?.email || 'guest@example.com',
           name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
-          phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
-        } as { email: string; name: string; phonenumber?: string };
+        } as { email: string; name: string };
 
-        // Initialize Flutterwave Hosted Pay via backend
-        const initRes = await flutterwaveApi.init({
+        // Initialize Stripe Hosted Pay via backend
+        const initRes = await stripeApi.init({
           bookingId: (response as any).data.booking.id,
           amount,
           currency: selectedService.currency || 'RWF',
@@ -212,7 +196,7 @@ const Transportation = () => {
         });
 
         if (initRes.success && initRes.link) {
-          setFlutterwaveLink(initRes.link);
+          setPaymentLink(initRes.link);
           if (initRes.tx_ref) setTxRef(initRes.tx_ref);
           // Redirect same tab
           window.location.href = initRes.link;
@@ -246,7 +230,7 @@ const Transportation = () => {
     }
     try {
       setIsPaying(true);
-      const data = await flutterwaveApi.verifyJson(txRef);
+      const data = await stripeApi.verifyJson(txRef);
       if (data.success && data.paid) {
         setPaymentVerified(true);
         toast({ title: 'Payment Verified', description: 'Your payment has been confirmed. You can now proceed.', variant: 'default' });
@@ -363,9 +347,17 @@ const Transportation = () => {
                 <div className="flex gap-2 text-sm">
                   <span className="font-semibold">Per Trip:</span>
                   <span className="font-medium">
-                    {service.pricePerHour.toLocaleString()} {service.currency}
+                    {(service.pricePerTrip || 0).toLocaleString()} {service.currency}
                   </span>
                 </div>
+                {service.pricePerHour && (
+                  <div className="flex gap-2 text-sm">
+                    <span className="font-semibold">Per Hour:</span>
+                    <span className="font-medium">
+                      {service.pricePerHour.toLocaleString()} {service.currency}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between items-center">
@@ -512,15 +504,12 @@ const Transportation = () => {
               <div className="space-y-2">
                 <h4 className="font-semibold">Payment Method</h4>
                 <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider === 'VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
-                    <img src="/logos/visa.svg" alt="Visa" className="h-6" />
-                  </button>
-                  <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider === 'MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
-                    <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
-                  </button>
-                  <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider === 'MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
-                    <img src="/logos/momo.jpg" alt="MTN MoMo" className="h-6" />
-                  </button>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <img src="/logos/visa.svg" alt="Visa" className="h-4" />
+                    <img src="/logos/mastercard.svg" alt="Mastercard" className="h-4" />
+                    <img src="/logos/momo.jpg" alt="MTN MoMo" className="h-4" />
+                    <span>Secure checkout via Stripe</span>
+                  </div>
                 </div>
               </div>
 
@@ -541,7 +530,7 @@ const Transportation = () => {
                           {days > 0 ? `Total for ${days} day${days > 1 ? 's' : ''}` : 'Total'}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Base rate: {selectedService.currency} {(selectedService.pricePerTrip || 0).toLocaleString()} per day
+                          Base rate: {selectedService.currency} {(selectedService.pricePerTrip || 0).toLocaleString()} per trip
                           {days > 0 && (
                             <>
                               <br />
@@ -572,7 +561,7 @@ const Transportation = () => {
                         Processing...
                       </div>
                     ) : (
-                      `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Flutterwave)`
+                      'Pay with Card (Stripe)'
                     )}
                   </Button>
                   {txRef && (
@@ -585,7 +574,7 @@ const Transportation = () => {
                 {/* Step 2: Verify Payment */}
                 {txRef && (
                   <div className="space-y-2">
-                    <Button
+                    <Button 
                       type="button"
                       variant="secondary"
                       className="w-full"
@@ -634,7 +623,13 @@ const Transportation = () => {
                 className="w-full"
                 disabled={!paymentVerified}
                 variant={paymentVerified ? "default" : "secondary"}
-                onClick={() => setSuccess(true)}
+                onClick={() => {
+                  setSuccess(true);
+                  // Redirect to dashboard after successful payment
+                  setTimeout(() => {
+                    window.location.href = "/dashboard/transportation";
+                  }, 2000);
+                }}
               >
                 {paymentVerified ? 'Confirm and Continue' : 'Complete Payment First'}
               </Button>

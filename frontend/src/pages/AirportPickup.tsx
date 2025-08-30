@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
-import { transportationApi, bookingsApi, paymentsApi, flutterwaveApi } from "@/lib/api";
+import { transportationApi, bookingsApi, stripeApi } from "@/lib/api";
 
 interface Transportation {
   id: string;
@@ -59,19 +59,12 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   const [transportationLoading, setTransportationLoading] = useState(true);
   const [vehicles, setVehicles] = useState<Transportation[]>([]);
   const [isPaying, setIsPaying] = useState(false);
-  const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
-  const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
-  const [card, setCard] = useState({ holder: "", number: "", expiry: "", cvc: "" });
-  const [momo, setMomo] = useState({
-    phone: "",
-    name: "",
-    reference: "",
-  });
+  // Payment method is now handled by Stripe checkout
   const [showVerificationReminder, setShowVerificationReminder] = useState(false);
 
-  // Added for Flutterwave flow
+  // Added for payment flow
   const [paymentVerified, setPaymentVerified] = useState(false);
-  const [flutterwaveLink, setFlutterwaveLink] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string | null>(null);
 
   // Fetch transportation services from backend
@@ -115,10 +108,12 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
       time: "",
       passengers: 1
     });
+    // Reset payment states
     setPaymentVerified(false);
     setTxRef(null);
-    setFlutterwaveLink(null);
+    setPaymentLink(null);
     setConfirmed(false);
+    // Payment form states are no longer needed
     setModalOpen(true);
   };
 
@@ -133,16 +128,8 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
     }
 
     try {
-      // Validate payment selection
-      if (paymentProvider === 'MOMO') {
-        if (!momo.phone || !momo.name) {
-          throw new Error('Please provide your MoMo number and name.');
-        }
-      } else {
-        if (!card.holder || !card.number || !card.expiry || !card.cvc) {
-          throw new Error('Please fill in all card fields.');
-        }
-      }
+      // For Stripe checkout, we don't need to validate card fields here
+      // User will enter card details on Stripe's secure checkout page
 
       const response = await bookingsApi.create({
         serviceType: "TRANSPORTATION",
@@ -163,10 +150,9 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
         const customer = {
           email: user?.email || 'guest@example.com',
           name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
-          phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
-        } as { email: string; name: string; phonenumber?: string };
+        } as { email: string; name: string };
 
-        const initRes = await flutterwaveApi.init({
+        const initRes = await stripeApi.init({
           bookingId: (response as any).data.booking.id,
           amount,
           currency: selectedCar.currency || 'RWF',
@@ -174,7 +160,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
         });
 
         if (initRes.success && initRes.link) {
-          setFlutterwaveLink(initRes.link);
+          setPaymentLink(initRes.link);
           if (initRes.tx_ref) setTxRef(initRes.tx_ref);
           window.location.href = initRes.link;
         } else {
@@ -206,7 +192,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
     }
     try {
       setIsPaying(true);
-      const data = await flutterwaveApi.verifyJson(txRef);
+      const data = await stripeApi.verifyJson(txRef);
       if (data.success && data.paid) {
         setPaymentVerified(true);
         toast({ title: 'Payment Verified', description: 'Your payment has been confirmed. You can now proceed.', variant: 'default' });
@@ -452,15 +438,12 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                 <div className="space-y-2">
                   <h4 className="font-semibold">Payment Method</h4>
                   <div className="flex items-center gap-4">
-                    <button type="button" onClick={() => setPaymentProvider('VISA')} className={`rounded border p-1 transition ${paymentProvider === 'VISA' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Visa">
-                      <img src="/logos/visa.svg" alt="Visa" className="h-6" />
-                    </button>
-                    <button type="button" onClick={() => setPaymentProvider('MASTERCARD')} className={`rounded border p-1 transition ${paymentProvider === 'MASTERCARD' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with Mastercard">
-                      <img src="/logos/mastercard.svg" alt="Mastercard" className="h-6" />
-                    </button>
-                    <button type="button" onClick={() => setPaymentProvider('MOMO')} className={`rounded border p-1 transition ${paymentProvider === 'MOMO' ? 'ring-2 ring-green-600' : 'border-input'}`} aria-label="Pay with MTN MoMo">
-                      <img src="/logos/momo.jpg" alt="MTN MoMo" className="h-6" />
-                    </button>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <img src="/logos/visa.svg" alt="Visa" className="h-4" />
+                      <img src="/logos/mastercard.svg" alt="Mastercard" className="h-4" />
+                      <img src="/logos/momo.jpg" alt="MTN MoMo" className="h-4" />
+                      <span>Secure checkout via Stripe</span>
+                    </div>
                   </div>
                 </div>
 
@@ -485,8 +468,8 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                   </div>
                 </div>
 
-                {/* Payment Actions */}
-                <div className="space-y-4">
+                 {/* Payment Actions */}
+                 <div className="space-y-4">
                   {/* Step 1: Initiate Payment */}
                   <div className="space-y-2">
                     <Button type="submit" className="w-full" disabled={isPaying}>
@@ -496,7 +479,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                           Processing...
                         </div>
                       ) : (
-                        `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Flutterwave)`
+                        'Pay with Card (Stripe)'
                       )}
                     </Button>
                     {txRef && (
@@ -509,11 +492,11 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                   {/* Step 2: Verify Payment */}
                   {txRef && (
                     <div className="space-y-2">
-                      <Button
-                        type="button"
-                        variant="secondary"
+                      <Button 
+                        type="button" 
+                        variant="secondary" 
                         className="w-full"
-                        onClick={verifyPayment}
+                        onClick={verifyPayment} 
                         disabled={isPaying || paymentVerified}
                       >
                         {isPaying ? (
@@ -553,12 +536,18 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                 </div>
 
                 {/* Confirm after verification */}
-                <Button
-                  type="button"
-                  className="w-full"
+                <Button 
+                  type="button" 
+                  className="w-full" 
                   disabled={!paymentVerified}
                   variant={paymentVerified ? "default" : "secondary"}
-                  onClick={() => setConfirmed(true)}
+                  onClick={() => {
+                    setConfirmed(true);
+                    // Redirect to dashboard after successful payment
+                    setTimeout(() => {
+                      window.location.href = "/dashboard/airportpickup";
+                    }, 2000);
+                  }}
                 >
                   {paymentVerified ? 'Confirm and Continue' : 'Complete Payment First'}
                 </Button>

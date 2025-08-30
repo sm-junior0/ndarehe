@@ -10,7 +10,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { bookingsApi, accommodationsApi, paymentsApi, flutterwaveApi } from "@/lib/api";
+import { bookingsApi, accommodationsApi, paymentsApi, stripeApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import EmailVerificationReminder from "@/components/EmailVerificationReminder";
 
@@ -160,7 +160,7 @@ const AccommodationDetails = () => {
   const [paymentProvider, setPaymentProvider] = useState<'VISA' | 'MASTERCARD' | 'MOMO'>('VISA');
   const [selectedBank, setSelectedBank] = useState<'Bank of Kigali' | "I&M Bank" | 'Equity Bank'>('Bank of Kigali');
   const [paymentVerified, setPaymentVerified] = useState(false);
-  const [flutterwaveLink, setFlutterwaveLink] = useState<string | null>(null);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [txRef, setTxRef] = useState<string | null>(null);
   const [card, setCard] = useState({
     holder: "",
@@ -331,15 +331,19 @@ const AccommodationDetails = () => {
   };
 
   // In your AccommodationDetails component
-  const handleFlutterwavePayment = async () => {
+  const handleStripePayment = async () => {
     console.log('🔵 handleFlutterwavePayment called!');
-
+    console.log('🔵 accommodation:', accommodation);
+    console.log('🔵 booking:', booking);
+    console.log('🔵 paymentProvider:', paymentProvider);
+    
     if (!accommodation) {
       console.log('❌ No accommodation data');
       return;
     }
 
     try {
+      console.log('🔵 Setting isPaying to true');
       setIsPaying(true);
 
       // Auth and validation
@@ -348,7 +352,6 @@ const AccommodationDetails = () => {
         toast({ title: 'Authentication Required', description: 'Please log in to proceed with payment', variant: 'destructive' });
         return;
       }
-
       if (new Date(booking.checkOut) <= new Date(booking.checkIn)) {
         toast({ title: 'Invalid Dates', description: 'Check-out date must be after check-in date', variant: 'destructive' });
         return;
@@ -362,7 +365,7 @@ const AccommodationDetails = () => {
         }
       }
 
-      // 1) Create booking (TEMPORARY status)
+      // 1) Create booking (PENDING)
       const bookingRes = await bookingsApi.create({
         serviceType: 'ACCOMMODATION',
         serviceId: accommodation.id,
@@ -371,14 +374,8 @@ const AccommodationDetails = () => {
         numberOfPeople: parseInt(booking.guests || '1', 10),
         specialRequests: booking.specialRequests || ''
       });
-
-      if (!bookingRes.success) {
-        console.error('Booking creation failed:', bookingRes);
-        throw new Error('Failed to create booking');
-      }
-
+      if (!bookingRes.success) throw new Error('Failed to create booking');
       const newBooking = bookingRes.data.booking;
-      console.log('✅ Booking created successfully:', newBooking);
 
       // 2) Compute amount
       const checkInDate = new Date(booking.checkIn);
@@ -387,78 +384,42 @@ const AccommodationDetails = () => {
       const rawNights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / msPerDay);
       const nights = Math.max(1, rawNights);
       const guests = parseInt(booking.guests) || 1;
-      const baseAmount = nights * guests * (accommodation.pricePerNight || 0);
-      const stripeFee = baseAmount * 0.05; // 5% Stripe fee
-      const amount = baseAmount + stripeFee;
+      const amount = nights * guests * (accommodation.pricePerNight || 0);
 
-      console.log('💰 Payment details:', { nights, guests, amount, currency: accommodation.currency });
-
-      // 3) Prepare customer (Flutterwave Hosted Pay)
+      // 3) Prepare customer (Stripe Checkout)
       const customer = {
         email: user?.email || 'guest@example.com',
         name: `${user?.firstName || 'Guest'} ${user?.lastName || ''}`.trim(),
-        phonenumber: paymentProvider === 'MOMO' ? momo.phone : undefined,
-      };
+      } as { email: string; name: string };
 
-      console.log('👤 Customer details:', customer);
-
-      // 4) Initialize Flutterwave session via backend
-      console.log('🚀 Initializing Flutterwave payment...');
-      console.log('📤 Sending payload to backend:', {
+      // 4) Initialize Stripe session via backend
+      const initRes = await stripeApi.init({
         bookingId: newBooking.id,
         amount,
         currency: accommodation.currency || 'RWF',
         customer,
       });
-
-      const initRes = await flutterwaveApi.init({
-        bookingId: newBooking.id,
-        amount,
-        currency: accommodation.currency || 'RWF',
-        customer,
-      });
-
-      console.log('📡 Flutterwave init response:', initRes);
 
       if (initRes.success && initRes.link) {
-        const paymentLink = initRes.link;
-        const transactionRef = initRes.tx_ref;
-
-        setFlutterwaveLink(paymentLink);
-        if (transactionRef) setTxRef(transactionRef);
-
-        console.log('✅ Flutterwave payment initialized successfully');
-        console.log('🔗 Payment link:', paymentLink);
-        console.log('📝 Transaction ref:', transactionRef);
-
-        // Open Flutterwave payment page in a new tab/window
-        const paymentWindow = window.open(paymentLink, '_blank', 'noopener,noreferrer');
-
-        if (paymentWindow) {
-          toast({
-            title: 'Payment Page Opened',
-            description: 'Complete your payment in the new tab, then return here and click "Verify Payment"',
-            variant: 'default',
-          });
-
-          // Focus the payment window
-          paymentWindow.focus();
-        } else {
-          // Fallback if popup is blocked
-          toast({
-            title: 'Popup Blocked',
-            description: 'Please allow popups and try again, or copy this link: ' + paymentLink,
-            variant: 'destructive',
-          });
-        }
+        setPaymentLink(initRes.link);
+        if (initRes.tx_ref) setTxRef(initRes.tx_ref);
+        
+        console.log('[Stripe] Checkout link:', initRes.link, 'tx_ref:', initRes.tx_ref);
+        
+        // Open Stripe payment page in same tab
+        window.location.href = initRes.link;
+        
+        toast({
+          title: 'Payment Page Opened',
+          description: 'Complete your payment in the opened page, then return here and click "Verify Payment"',
+          variant: 'default',
+        });
       } else {
-        console.error('❌ Flutterwave init failed:', initRes);
-        throw new Error(initRes.message || 'Failed to initiate payment - no payment link received');
+        throw new Error(initRes.message || 'Failed to initiate payment');
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Payment initialization error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment';
-      toast({ title: 'Payment Error', description: errorMessage, variant: 'destructive' });
+      toast({ title: 'Payment Error', description: error.message || 'Failed to initiate payment', variant: 'destructive' });
     } finally {
       setIsPaying(false);
     }
@@ -473,8 +434,8 @@ const AccommodationDetails = () => {
     try {
       setIsPaying(true);
       console.log('[Payment] Verifying payment for tx_ref:', txRef);
-
-      const data = await flutterwaveApi.verifyJson(txRef);
+      
+      const data = await stripeApi.verifyJson(txRef);
 
       if (data.success && data.paid) {
         setPaymentVerified(true);
@@ -487,12 +448,11 @@ const AccommodationDetails = () => {
       } else {
         throw new Error('Payment not verified yet. Please complete the payment and try again.');
       }
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error('Payment verification error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Payment not verified. Please complete the payment first.';
       toast({
         title: 'Verification Failed',
-        description: errorMessage,
+        description: error.message || 'Payment not verified. Please complete the payment first.',
         variant: 'destructive'
       });
     } finally {
@@ -1028,13 +988,13 @@ const AccommodationDetails = () => {
               <div className="space-y-4">
                 {/* Step 1: Initiate Payment */}
                 <div className="space-y-2">
-                  <Button
-                    type="button"
-                    className="w-full"
+                  <Button 
+                    type="button" 
+                    className="w-full" 
                     onClick={() => {
                       console.log('🔴 Button clicked!');
-                      handleFlutterwavePayment();
-                    }}
+                      handleStripePayment();
+                    }} 
                     disabled={isPaying}
                   >
                     {isPaying ? (
@@ -1043,28 +1003,13 @@ const AccommodationDetails = () => {
                         Processing...
                       </div>
                     ) : (
-                      `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Flutterwave)`
+                      `Pay with ${paymentProvider === 'MOMO' ? 'MTN/Airtel' : 'Card'} (Stripe)`
                     )}
                   </Button>
-
+                  
                   {txRef && (
                     <div className="text-xs text-muted-foreground bg-secondary/50 p-2 rounded">
                       Transaction Reference: {txRef}
-                    </div>
-                  )}
-
-                  {flutterwaveLink && (
-                    <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded border border-blue-200">
-                      <p className="font-medium text-blue-700 mb-1">Payment Link Generated</p>
-                      <p className="text-blue-600 mb-2">If the payment page didn't open automatically, click the link below:</p>
-                      <a
-                        href={flutterwaveLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline hover:text-blue-800 break-all"
-                      >
-                        {flutterwaveLink}
-                      </a>
                     </div>
                   )}
                 </div>
@@ -1072,11 +1017,11 @@ const AccommodationDetails = () => {
                 {/* Step 2: Verify Payment */}
                 {txRef && (
                   <div className="space-y-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
                       className="w-full"
-                      onClick={verifyPayment}
+                      onClick={verifyPayment} 
                       disabled={isPaying || paymentVerified}
                     >
                       {isPaying ? (
@@ -1093,16 +1038,10 @@ const AccommodationDetails = () => {
                         'Verify Payment'
                       )}
                     </Button>
-
+                    
                     {!paymentVerified && txRef && (
-                      <div className="text-xs text-muted-foreground bg-yellow-50 p-2 rounded border border-yellow-200">
-                        <p className="font-medium text-yellow-700 mb-1">Payment Verification Required</p>
-                        <p className="text-yellow-600">
-                          After completing payment on Flutterwave, return here and click "Verify Payment" to confirm your booking.
-                        </p>
-                        <p className="text-xs mt-1 text-yellow-600">
-                          💡 Tip: Keep this tab open while making payment in the other tab
-                        </p>
+                      <div className="text-xs text-muted-foreground">
+                        After completing payment, click "Verify Payment" to confirm
                       </div>
                     )}
                   </div>
@@ -1118,14 +1057,6 @@ const AccommodationDetails = () => {
                     <p className="text-sm text-green-600 mt-1">
                       Your payment has been confirmed. You can now proceed with your booking.
                     </p>
-                    <div className="mt-2 p-2 bg-green-100 rounded text-xs text-green-700">
-                      <p className="font-medium">Next Steps:</p>
-                      <ol className="list-decimal list-inside mt-1 space-y-1">
-                        <li>Click "Confirm and Continue" below to finalize your booking</li>
-                        <li>Check your email for confirmation details</li>
-                        <li>Your booking will be confirmed and dates reserved</li>
-                      </ol>
-                    </div>
                   </div>
                 )}
               </div>
