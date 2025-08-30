@@ -29,11 +29,17 @@ import notificationRoutes from './routes/notifications';
 import adminRoutes from './routes/admin';
 
 
+
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const prisma = new PrismaClient();
+
+console.log('🔄 Registering payment routes...');
+app.use('/api/payments', paymentRoutes);
+console.log('✅ Payment routes registered');
 
 // Trust proxy for rate limiting behind load balancers
 app.set('trust proxy', 1);
