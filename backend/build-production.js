@@ -17,9 +17,22 @@ try {
   console.log('🔨 Building TypeScript...');
   execSync('npx tsc --max-old-space-size=2048', { stdio: 'inherit' });
 
-  // Step 4: Push database schema
+  // Step 4: Verify build output
+  console.log('🔍 Verifying build output...');
+  const fs = require('fs');
+  if (!fs.existsSync('dist/server.js')) {
+    throw new Error('Build failed: dist/server.js not found');
+  }
+  console.log('✅ Build output verified');
+
+  // Step 5: Push database schema (optional - don't fail build if this fails)
   console.log('🗄️  Pushing database schema...');
-  execSync('npx prisma db push', { stdio: 'inherit' });
+  try {
+    execSync('npx prisma db push', { stdio: 'inherit' });
+    console.log('✅ Database schema updated');
+  } catch (dbError) {
+    console.warn('⚠️  Database schema update failed (continuing):', dbError.message);
+  }
 
   console.log('✅ Production build completed successfully!');
 } catch (error) {

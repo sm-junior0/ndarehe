@@ -280,6 +280,11 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
+    console.log('🚀 Starting NDAREHE API Server...');
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔌 Port: ${PORT}`);
+    console.log(`🌐 Host: 0.0.0.0`);
+    
     // Test database connection
     // await testConnection();
     // console.log('✅ Database connection established');
@@ -289,6 +294,7 @@ const startServer = async () => {
       console.log(`🚀 NDAREHE API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`🔗 Ping endpoint: http://0.0.0.0:${PORT}/ping`);
       console.log(`📚 API Docs: http://0.0.0.0:${PORT}/api-docs`);
       
       // Sanitize and display DB host and key URLs for debugging environment mismatches
@@ -316,6 +322,8 @@ const startServer = async () => {
 
       // Start automatic cleanup job for expired PENDING bookings
       startCleanupJob();
+      
+      console.log('✅ Server startup completed successfully!');
     });
 
     // Add error handling for the server
@@ -325,11 +333,19 @@ const startServer = async () => {
         console.error(`❌ Port ${PORT} is already in use`);
       } else if (error.code === 'EACCES') {
         console.error(`❌ Permission denied to bind to port ${PORT}`);
+      } else {
+        console.error(`❌ Unknown server error: ${error.message}`);
       }
       process.exit(1);
     });
 
+    // Add connection handling
+    server.on('connection', (socket) => {
+      console.log('🔌 New connection established');
+    });
+
     console.log(`✅ Server started successfully on port ${PORT}`);
+    
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
