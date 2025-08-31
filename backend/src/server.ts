@@ -321,24 +321,52 @@ const startCleanupJob = () => {
       
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
       
-              const expiredBookings = await prisma.booking.findMany({
-          where: {
-            status: 'PENDING' as any,
-            createdAt: {
-              lt: fifteenMinutesAgo
+      const expiredBookings = await prisma.booking.findMany({
+        where: {
+          status: 'PENDING' as any,
+          createdAt: {
+            lt: fifteenMinutesAgo
+          }
+        },
+        include: {
+          payment: true,
+          review: true
+        }
+      });
+
+      if (expiredBookings.length > 0) {
+        // Use a transaction to safely delete related records
+        const deleteResult = await prisma.$transaction(async (tx) => {
+          let deletedCount = 0;
+          
+          for (const booking of expiredBookings) {
+            try {
+              // Delete related records first
+              if (booking.payment) {
+                await tx.payment.delete({
+                  where: { id: booking.payment.id }
+                });
+              }
+              
+              if (booking.review) {
+                await tx.review.delete({
+                  where: { id: booking.review.id }
+                });
+              }
+              
+              // Now delete the booking
+              await tx.booking.delete({
+                where: { id: booking.id }
+              });
+              
+              deletedCount++;
+            } catch (error) {
+              console.error(`❌ Failed to delete booking ${booking.id}:`, error);
             }
           }
+          
+          return { count: deletedCount };
         });
-
-        if (expiredBookings.length > 0) {
-          const deleteResult = await prisma.booking.deleteMany({
-            where: {
-              status: 'PENDING' as any,
-              createdAt: {
-                lt: fifteenMinutesAgo
-              }
-            }
-          });
 
         console.log(`🧹 Cleaned up ${deleteResult.count} expired PENDING bookings`);
         

@@ -2,7 +2,7 @@ services:
   - type: web
     name: ndarehe-backend
     env: node
-    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss
+    buildCommand: npm install && npm run migrate:temp-status && npx prisma generate && npx prisma db push --accept-data-loss
     startCommand: npm start
     envVars:
       - key: NODE_ENV
