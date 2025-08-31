@@ -2,12 +2,11 @@ services:
   - type: web
     name: ndarehe-backend
     env: node
-    buildCommand: npm install && npx prisma generate && npm run build
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-    # Add database migration step using our safe migration script
-    postDeployCommand: npm run db:migrate-safe 
