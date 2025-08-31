@@ -14,7 +14,8 @@
     "db:migrate": "npx prisma migrate deploy",
     "db:studio": "npx prisma studio",
     "render-build": "npm install && npx prisma generate && npm run build",
-    "db:seed": "ts-node src/database/seed.ts"
+    "db:seed": "ts-node src/database/seed.ts",
+    "safe-migrate": "node safe-migration.js"
   },
   "keywords": [
     "accommodation",
