@@ -2,7 +2,7 @@ services:
   - type: web
     name: ndarehe-backend
     env: node
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: node build.js
     startCommand: npm start
     envVars:
       - key: NODE_ENV
