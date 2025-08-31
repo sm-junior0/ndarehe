@@ -148,6 +148,17 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root endpoint for Render health check
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'NDAREHE API Server is running',
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 5000,
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Favicon handler to avoid noisy 404s
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
