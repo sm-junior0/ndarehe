@@ -11,7 +11,9 @@
     "postinstall": "npx prisma generate",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
+    "db:push-safe": "npx prisma db push --accept-data-loss",
     "db:migrate": "npx prisma migrate deploy",
+    "db:migrate-safe": "node scripts/migrate.js",
     "db:studio": "npx prisma studio",
     "render-build": "npm install && npx prisma generate && npm run build",
     "db:seed": "ts-node src/database/seed.ts"
