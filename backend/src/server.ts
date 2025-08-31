@@ -37,8 +37,9 @@ import testRoutes from './routes/test-routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 const prisma = new PrismaClient();
+let server: any;
 
 app.use('/api/test', testRoutes);
 
@@ -284,7 +285,7 @@ const startServer = async () => {
     // console.log('✅ Database connection established');
 
     // Start server
-    app.listen(PORT, '0.0.0.0', () => {
+    server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 NDAREHE API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
@@ -316,6 +317,19 @@ const startServer = async () => {
       // Start automatic cleanup job for expired PENDING bookings
       startCleanupJob();
     });
+
+    // Add error handling for the server
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+      } else if (error.code === 'EACCES') {
+        console.error(`❌ Permission denied to bind to port ${PORT}`);
+      }
+      process.exit(1);
+    });
+
+    console.log(`✅ Server started successfully on port ${PORT}`);
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
@@ -410,12 +424,26 @@ const startCleanupJob = () => {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  process.exit(0);
+  if (server) {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  if (server) {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
 });
 
 startServer();
