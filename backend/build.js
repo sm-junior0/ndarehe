@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 const { execSync } = require('child_process');
-const path = require('path');
 
-console.log('🚀 Starting safe build process...');
+console.log('🚀 Starting build process...');
 
 try {
   // Install dependencies
@@ -14,34 +13,30 @@ try {
   console.log('🔧 Generating Prisma client...');
   execSync('npx prisma generate', { stdio: 'inherit' });
 
-  // Run safe migration to convert TEMPORARY to PENDING
+  // Run safe migration
   console.log('🔄 Running safe migration...');
   execSync('node safe-migration.js', { stdio: 'inherit' });
 
-  // Now remove TEMPORARY from schema and push
-  console.log('🗄️  Updating schema and pushing to database...');
-  
-  // Remove TEMPORARY from schema
+  // Update schema to remove TEMPORARY status
+  console.log('📝 Updating schema...');
   const fs = require('fs');
-  const schemaPath = path.join(__dirname, 'prisma', 'schema.prisma');
-  let schema = fs.readFileSync(schemaPath, 'utf8');
+  let schema = fs.readFileSync('prisma/schema.prisma', 'utf8');
   
   // Remove TEMPORARY from BookingStatus enum
   schema = schema.replace(/^\s*TEMPORARY\s*$/gm, '');
+  fs.writeFileSync('prisma/schema.prisma', schema);
   
-  // Write updated schema
-  fs.writeFileSync(schemaPath, schema);
   console.log('✅ Schema updated: TEMPORARY status removed');
 
-  // Generate Prisma client again with updated schema
+  // Generate Prisma client with updated schema
   console.log('🔧 Regenerating Prisma client...');
   execSync('npx prisma generate', { stdio: 'inherit' });
 
-  // Push the updated schema (should work now without data loss warnings)
-  console.log('🗄️  Pushing updated schema...');
+  // Push schema (should work now without warnings)
+  console.log('🗄️  Pushing schema to database...');
   execSync('npx prisma db push', { stdio: 'inherit' });
 
-  console.log('✅ Build completed successfully with no data loss!');
+  console.log('✅ Build completed successfully!');
 } catch (error) {
   console.error('❌ Build failed:', error.message);
   process.exit(1);

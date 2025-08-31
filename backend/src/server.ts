@@ -273,11 +273,11 @@ const startServer = async () => {
     // console.log('✅ Database connection established');
 
     // Start server
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 NDAREHE API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
+      console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`📚 API Docs: http://0.0.0.0:${PORT}/api-docs`);
       
       // Sanitize and display DB host and key URLs for debugging environment mismatches
       try {
