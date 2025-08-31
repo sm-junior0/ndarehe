@@ -15,7 +15,8 @@
     "db:studio": "npx prisma studio",
     "render-build": "npm install && npx prisma generate && npm run build",
     "db:seed": "ts-node src/database/seed.ts",
-    "migrate:temp-status": "ts-node prisma/migrate-temporary-status.ts"
+    "migrate:temp-status": "ts-node prisma/migrate-temporary-status.ts",
+    "fix:temp-status": "node fix-deployment.js"
   },
   "keywords": [
     "accommodation",
