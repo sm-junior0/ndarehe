@@ -331,7 +331,7 @@ const AccommodationDetails = () => {
   };
 
   // In your AccommodationDetails component
-  const handleStripePayment = async () => {
+  const handleStripePayment1 = async () => {
     console.log('🔵 handleStripePayment called!');
     console.log('🔵 accommodation:', accommodation);
     console.log('🔵 booking:', booking);
@@ -425,7 +425,15 @@ const AccommodationDetails = () => {
     }
   };
 
-  const verifyPayment = async () => {
+  const handleStripePayment = async () => {
+  toast({
+    title: "Payment Feature Coming Soon",
+    description: "The payment feature will be available in the near future.",
+    variant: "default"
+  });
+};
+
+  const verifyPayment1 = async () => {
     if (!txRef) {
       toast({ title: 'Missing reference', description: 'Start payment first to get a transaction reference.', variant: 'destructive' });
       return;
@@ -459,6 +467,14 @@ const AccommodationDetails = () => {
       setIsPaying(false);
     }
   };
+
+const verifyPayment = async () => {
+  toast({
+    title: "Payment Feature Coming Soon",
+    description: "The payment feature will be available in the near future.",
+    variant: "default"
+  });
+};
 
   const handleBookingAndPayment = async (e: React.FormEvent) => {
     e.preventDefault();

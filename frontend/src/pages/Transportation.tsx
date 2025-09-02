@@ -136,7 +136,7 @@ const Transportation = () => {
     setModalOpen(true);
   };
 
-  const handleBooking = async (e: React.FormEvent) => {
+  const handleBooking1 = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedService) return;
 
@@ -223,7 +223,16 @@ const Transportation = () => {
     }
   };
 
-  const verifyPayment = async () => {
+  const handleBooking = async (e: React.FormEvent) => {
+  e.preventDefault();
+  toast({
+    title: "Payment Feature Coming Soon",
+    description: "The payment feature will be available in the near future.",
+    variant: "default"
+  });
+};
+
+  const verifyPayment1 = async () => {
     if (!txRef) {
       toast({ title: 'Missing reference', description: 'Start payment first to get a transaction reference.', variant: 'destructive' });
       return;
@@ -243,6 +252,14 @@ const Transportation = () => {
       setIsPaying(false);
     }
   };
+
+  const verifyPayment = async () => {
+  toast({
+    title: "Payment Feature Coming Soon",
+    description: "The payment feature will be available in the near future.",
+    variant: "default"
+  });
+};
 
   if (loading) {
     const content = (

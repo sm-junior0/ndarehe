@@ -117,7 +117,7 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
     setModalOpen(true);
   };
 
-  const handleBooking = async (e: React.FormEvent) => {
+  const handleBooking1 = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCar) return;
 
@@ -185,7 +185,17 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
     }
   };
 
-  const verifyPayment = async () => {
+
+  const handleBooking = async (e: React.FormEvent) => {
+  e.preventDefault();
+  toast({
+    title: "Payment Feature Coming Soon",
+    description: "The payment feature will be available in the near future.",
+    variant: "default"
+  });
+};
+
+  const verifyPayment1 = async () => {
     if (!txRef) {
       toast({ title: 'Missing reference', description: 'Start payment first to get a transaction reference.', variant: 'destructive' });
       return;
@@ -205,6 +215,14 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
       setIsPaying(false);
     }
   };
+
+  const verifyPayment = async () => {
+  toast({
+    title: "Payment Feature Coming Soon",
+    description: "The payment feature will be available in the near future.",
+    variant: "default"
+  });
+};
 
   // Helper function to get luggage capacity based on vehicle type
   const getLuggageCapacity = (vehicleType: string, capacity: number) => {
