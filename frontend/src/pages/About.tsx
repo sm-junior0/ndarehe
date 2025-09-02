@@ -255,7 +255,7 @@ const stopAutoSlide = () => {
             <p className="text-xl md:text-2xl mb-8 opacity-90 animate-fade-in-delay">
               Connecting travelers with authentic Rwandan experiences since 2024
             </p>
-            <Badge className="text-lg px-4 py-2 bg-white text-green-700 animate-fade-in-delay-2 hover:shadow-lg hover:scale-105 hover:-translate-y-1 hover:bg-white transition-all duration-300 cursor-pointer">Where to stay in Rwanda 🇷🇼</Badge>
+            <Badge className="text-lg px-4 py-2 bg-white text-green-700 animate-fade-in-delay-2 hover:shadow-lg hover:scale-105 hover:-translate-y-1 hover:bg-white transition-all duration-300 cursor-pointer">Where to stay in Rwanda</Badge>
           </div>
         </div>
       </section>
