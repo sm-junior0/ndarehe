@@ -7,14 +7,15 @@
     "start": "node dist/server.js",
     "predev": "npx prisma generate",
     "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "tsc && npx prisma generate",
+    "build": "tsc",
     "postinstall": "npx prisma generate",
     "db:generate": "npx prisma generate",
     "db:push": "npx prisma db push",
     "db:migrate": "npx prisma migrate deploy",
     "db:studio": "npx prisma studio",
     "render-build": "npm install && npx prisma generate && npm run build",
-    "db:seed": "ts-node src/database/seed.ts"
+    "db:seed": "ts-node src/database/seed.ts",
+    "safe-migrate": "node safe-migration.js"
   },
   "keywords": [
     "accommodation",

@@ -37,8 +37,9 @@ import testRoutes from './routes/test-routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 const prisma = new PrismaClient();
+let server: any;
 
 app.use('/api/test', testRoutes);
 
@@ -145,6 +146,17 @@ app.get('/health', (req, res) => {
         ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
       ]
     }
+  });
+});
+
+// Root endpoint for Render health check
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'NDAREHE API Server is running',
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 5000,
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -268,16 +280,22 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
+    console.log('🚀 Starting NDAREHE API Server...');
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔌 Port: ${PORT}`);
+    console.log(`🌐 Host: 0.0.0.0`);
+    
     // Test database connection
     // await testConnection();
     // console.log('✅ Database connection established');
 
     // Start server
-    app.listen(PORT, () => {
+    server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 NDAREHE API Server running on port ${PORT}`);
       console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
+      console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`🔗 Ping endpoint: http://0.0.0.0:${PORT}/ping`);
+      console.log(`📚 API Docs: http://0.0.0.0:${PORT}/api-docs`);
       
       // Sanitize and display DB host and key URLs for debugging environment mismatches
       try {
@@ -304,7 +322,30 @@ const startServer = async () => {
 
       // Start automatic cleanup job for expired PENDING bookings
       startCleanupJob();
+      
+      console.log('✅ Server startup completed successfully!');
     });
+
+    // Add error handling for the server
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      if (error.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use`);
+      } else if (error.code === 'EACCES') {
+        console.error(`❌ Permission denied to bind to port ${PORT}`);
+      } else {
+        console.error(`❌ Unknown server error: ${error.message}`);
+      }
+      process.exit(1);
+    });
+
+    // Add connection handling
+    server.on('connection', (socket) => {
+      console.log('🔌 New connection established');
+    });
+
+    console.log(`✅ Server started successfully on port ${PORT}`);
+    
   } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
@@ -321,24 +362,52 @@ const startCleanupJob = () => {
       
       const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
       
-              const expiredBookings = await prisma.booking.findMany({
-          where: {
-            status: 'PENDING' as any,
-            createdAt: {
-              lt: fifteenMinutesAgo
+      const expiredBookings = await prisma.booking.findMany({
+        where: {
+          status: 'PENDING' as any,
+          createdAt: {
+            lt: fifteenMinutesAgo
+          }
+        },
+        include: {
+          payment: true,
+          review: true
+        }
+      });
+
+      if (expiredBookings.length > 0) {
+        // Use a transaction to safely delete related records
+        const deleteResult = await prisma.$transaction(async (tx) => {
+          let deletedCount = 0;
+          
+          for (const booking of expiredBookings) {
+            try {
+              // Delete related records first
+              if (booking.payment) {
+                await tx.payment.delete({
+                  where: { id: booking.payment.id }
+                });
+              }
+              
+              if (booking.review) {
+                await tx.review.delete({
+                  where: { id: booking.review.id }
+                });
+              }
+              
+              // Now delete the booking
+              await tx.booking.delete({
+                where: { id: booking.id }
+              });
+              
+              deletedCount++;
+            } catch (error) {
+              console.error(`❌ Failed to delete booking ${booking.id}:`, error);
             }
           }
+          
+          return { count: deletedCount };
         });
-
-        if (expiredBookings.length > 0) {
-          const deleteResult = await prisma.booking.deleteMany({
-            where: {
-              status: 'PENDING' as any,
-              createdAt: {
-                lt: fifteenMinutesAgo
-              }
-            }
-          });
 
         console.log(`🧹 Cleaned up ${deleteResult.count} expired PENDING bookings`);
         
@@ -371,12 +440,26 @@ const startCleanupJob = () => {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
-  process.exit(0);
+  if (server) {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
-  process.exit(0);
+  if (server) {
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
 });
 
 startServer();
