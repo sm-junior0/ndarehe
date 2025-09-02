@@ -224,7 +224,8 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
   });
 };
 
-  // Helper function to get luggage capacity based on vehicle type
+  // Helper function to get lug
+  // gage capacity based on vehicle type
   const getLuggageCapacity = (vehicleType: string, capacity: number) => {
     switch (vehicleType) {
       case "VAN":
@@ -515,7 +516,8 @@ const AirportPickup = ({ showLayout = true }: { showLayout?: boolean }) => {
                         variant="secondary" 
                         className="w-full"
                         onClick={verifyPayment} 
-                        disabled={isPaying || paymentVerified}
+                        // disabled={isPaying || paymentVerified}
+                        disabled={true}
                       >
                         {isPaying ? (
                           <div className="flex items-center gap-2">

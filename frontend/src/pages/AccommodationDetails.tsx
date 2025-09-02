@@ -1011,7 +1011,8 @@ const verifyPayment = async () => {
                       console.log('🔴 Button clicked!');
                       handleStripePayment();
                     }} 
-                    disabled={isPaying}
+                    // disabled={isPaying}
+                    disabled={true}
                   >
                     {isPaying ? (
                       <div className="flex items-center gap-2">
@@ -1038,7 +1039,8 @@ const verifyPayment = async () => {
                       variant="secondary" 
                       className="w-full"
                       onClick={verifyPayment} 
-                      disabled={isPaying || paymentVerified}
+                      // disabled={isPaying || paymentVerified}
+                      disabled={true}
                     >
                       {isPaying ? (
                         <div className="flex items-center gap-2">

@@ -595,8 +595,9 @@ const Transportation = () => {
                       type="button"
                       variant="secondary"
                       className="w-full"
+                      disabled={true}
                       onClick={verifyPayment}
-                      disabled={isPaying || paymentVerified}
+                      // disabled={isPaying || paymentVerified}
                     >
                       {isPaying ? (
                         <div className="flex items-center gap-2">
