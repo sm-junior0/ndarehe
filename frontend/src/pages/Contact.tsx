@@ -40,7 +40,7 @@ const Contact = () => {
     {
       icon: Mail,
       title: "Email",
-      value: "dianekund@gmail.com",
+      value: "info@ndarehe.com",
       description: "Send us an email anytime"
     },
     {
@@ -58,8 +58,8 @@ const Contact = () => {
     {
       icon: Clock,
       title: "Business Hours",
-      value: "Mon-Fri: 8AM-6PM",
-      description: "Saturday: 9AM-4PM, Sunday: Closed"
+      value: "Mon-Sun: 8AM-6PM",
+      description: "We work all days of the week"
     }
   ];
 
